@@ -1,0 +1,6 @@
+data/
+archive/
+log/
+figures_images/
+.ipynb_checkpoints/
+.virtual_documents/
