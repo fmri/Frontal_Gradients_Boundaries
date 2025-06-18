@@ -15,13 +15,17 @@ experiment_name = 'spacetime';
 ROI_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/ROIs/';
 ROI_dir_save = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/intersections/';
 
-subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI'};
-N = length(subjCodes);
+subjCodes{1} = {'MM', 'PP', 'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI'};
+N{1} = length(subjCodes{1});
+subjCodes{2} = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI'};
+N{2} = length(subjCodes{2});
+
 
 %% Initialize variables
 data_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
 t_thresh = 2;
 contrasts = {'f-vP', 'f-aP', 'f-tP', 'vA-vP', 'aA-aP', 'tA-tP'};
+contrast_subjs = [2,2,2,1,1,1];
 N_contrasts = length(contrasts);
 hemis = {'lh', 'rh'};
 N_hemis = length(hemis);
@@ -38,8 +42,8 @@ for cc = 1:N_contrasts
     contrast = contrasts{cc};
     for hh = 1:N_hemis
         subj_vertices = [];
-        for ss = 1:N
-            subjCode = subjCodes{ss};
+        for ss = 1:N{contrast_subjs(cc)}
+            subjCode = subjCodes{contrast_subjs(cc)}{ss};
 
             cortex_label = lhrh_cortex_label{hh};
             hemi = hemis{hh};
@@ -75,6 +79,7 @@ end
 %% Now create probabilistic intersection labels
 
 contrasts = {'vA-vP', 'aA-aP'}; % Contrasts to get probabilistic intersections for
+contrast_subjs = 1;
 N_contrasts = length(contrasts);
 prob_ROI_label = cell(N_hemis,1);
 
@@ -82,8 +87,8 @@ for hh = 1:N_hemis
     hemi = hemis{hh};
     cortex_label = lhrh_cortex_label{hh};
     all_subj_vertices = [];
-    for ss = 1:N
-        subjCode = subjCodes{ss};
+    for ss = 1:N{contrast_subjs}
+        subjCode = subjCodes{contrast_subjs}{ss};
         subj_vertices = [];
         for cc = 1:N_contrasts
             contrast = contrasts{cc};
