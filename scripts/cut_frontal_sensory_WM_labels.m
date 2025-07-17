@@ -15,11 +15,11 @@ hemis = {'lh', 'rh'};
 path_base = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/';
 
 %contrasts = {'f-vP+f-aP', 'vA-vP+aA-aP', 'f-vP+f-aP+f-tP', 'vA-vP+aA-aP+tA-tP'};
-contrasts = {'f-vP+f-aP', 'vA-vP+aA-aP'};
+contrasts = {'f-aA', 'f-vA'};
 N_contrasts = length(contrasts);
 thresh = '4';
 %region = {'lateral', 'medial', 'precentral_sulcus_gyrus'};
-region = {'precentral_sulcus_gyrus'};
+region = {'lateral', 'medial'};
 
 for hh = 1:length(hemis)
     hemi = hemis{hh};

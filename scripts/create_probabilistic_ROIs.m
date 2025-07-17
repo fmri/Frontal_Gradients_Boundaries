@@ -23,9 +23,12 @@ N{2} = length(subjCodes{2});
 
 %% Initialize variables
 data_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
+label_or_nii = 'nii'; % 'label' to create .label files, 'nii' to create nifti files with # of subjs as data
 t_thresh = 2;
-contrasts = {'f-vP', 'f-aP', 'f-tP', 'vA-vP', 'aA-aP', 'tA-tP'};
-contrast_subjs = [2,2,2,1,1,1];
+% contrasts = {'f-vP', 'f-aP', 'f-tP', 'vA-vP', 'aA-aP', 'tA-tP'};
+% contrast_subjs = [2,2,2,1,1,1];
+contrasts = {'vA-aA'};
+contrast_subjs = [1,1];
 N_contrasts = length(contrasts);
 hemis = {'lh', 'rh'};
 N_hemis = length(hemis);

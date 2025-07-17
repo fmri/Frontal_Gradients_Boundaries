@@ -6,7 +6,7 @@
 %%% Tom Possidente - December 2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-addpath('/projectnb/somerslab/tom/functions/');
+addpath(genpath('/projectnb/somerslab/tom/functions/'));
 ccc;
 
 %% load subjIDs
@@ -22,11 +22,12 @@ N_subjs{2} = length(subjCodes{2});
 fs_num = 163842;
 
 %% Loop through subjs and contrasts and construct mri_concat command
-%contrasts = {'V-A', 'A-P'};
 %contrasts = {'f-vP', 'f-aP', 'f-tP'};
 %contrasts = {'aA-aP', 'vA-vP', 'tA-tP'};
-contrasts = {'vAaA-vPaP', 'aPvP-f'};
-subjCodes_list = [1,2];
+% contrasts = {'vAaA-vPaP', 'aPvP-f'};
+contrasts = {'V-A'};
+subjCodes_list = [1];
+reverse_contrast = [true];
 
 design = 'design.con'; % design.con for active contrasts, design_neg.con for passive contrasts
 N_contrasts = length(contrasts);
@@ -73,12 +74,17 @@ fsdir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/recons/fsave
 tfce_iters = '1000';
 dmats = {'design21', 'design19'};
 
-parfor cc = 1:N_contrasts
+for cc = 1:N_contrasts
     contrast = contrasts{cc};
-    for hh = 1:length(hemis)
+    parfor hh = 1:length(hemis)
         hemi = hemis{hh};
         input = [res_path hemi '.ces.localizer_groupavg_' contrast '.nii'];
         outdir = [res_path contrast '/' hemi '/'];
+        if reverse_contrast(cc)
+            splt_contrast = split(contrast,'-');
+            contrast_str = [splt_contrast{2} '-' splt_contrast{1}]
+            outdir = [res_path contrast_str '/' hemi '/'];
+        end
         if ~isfolder(outdir)
             mkdir(outdir)
         end
@@ -88,6 +94,9 @@ parfor cc = 1:N_contrasts
         data = spm_read_vols(hdr);
         nframes = size(data,4);
         data = reshape(data, [fs_num 1 1 nframes]);
+        if contains(contrast, 'f-') || reverse_contrast(cc) % switch contrast for interpretability if it is f-something
+            data = -data;
+        end
         new_input = [res_path hemi '.ces.localizer_groupavg_' contrast '_reshaped.nii'];
         for t = 1:nframes
             hdr(t).fname = new_input;
@@ -105,6 +114,10 @@ end
 %% PALM is outputting in nifti-2 format for some reason, so use nifti22nifti1.py to convert back into nifti-1 so matlab/freesurfer can use the files
 for cc = 1:N_contrasts
     contrast = contrasts{cc};
+    if reverse_contrast(cc)
+        splt_contrast = split(contrast,'-');
+        contrast = [splt_contrast{2} '-' splt_contrast{1}];
+    end
     for hh = 1:length(hemis)
         hemi = hemis{hh};
         input = [res_path contrast '/' hemi '/' '_tfce_tstat_fwep.nii'];
