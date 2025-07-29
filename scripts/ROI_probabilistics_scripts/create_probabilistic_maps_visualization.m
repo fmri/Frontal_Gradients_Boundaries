@@ -137,14 +137,18 @@ for hh = 1:2
     label_rows_vis = cortex_label(ismember(cortex_label.Var1, label_inds_vis),:);
     label_rows_aud = cortex_label(ismember(cortex_label.Var1, label_inds_aud),:);
 
-    
     % Make label file 
-    label_fname = [ROI_dir hemi '_' contrast '_cortex_probabilistic_thresh' num2str(tt) '.label']; % needs to be changed, left off here
-    %label = unique_rows(counts>=tt,:);
-    label_file = fopen(label_fname,'w');
-    fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label,1)) '\n']);
-    writematrix(label, label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
-    fclose(label_file);
+    label_fname_vis = [ROI_dir hemi '_' comp_contrasts{1} '_minus_' comp_contrasts{2} '_probabilistic_thresh4.label'];
+    label_file_vis = fopen(label_fname_vis,'w');
+    fprintf(label_file_vis, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label_rows_vis,1)) '\n']);
+    writematrix(table2array(label_rows_vis), label_fname_vis, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
+    fclose(label_file_vis);
+
+    label_fname_aud = [ROI_dir hemi '_' comp_contrasts{2} '_minus_' comp_contrasts{1} '_probabilistic_thresh4.label'];
+    label_file_aud = fopen(label_fname_aud,'w');
+    fprintf(label_file_aud, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label_rows_aud,1)) '\n']);
+    writematrix(table2array(label_rows_aud), label_fname_aud, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
+    fclose(label_file_aud);
 end
 
 

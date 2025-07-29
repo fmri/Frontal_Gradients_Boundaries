@@ -22,12 +22,12 @@ N_subjs{2} = length(subjCodes{2});
 fs_num = 163842;
 
 %% Loop through subjs and contrasts and construct mri_concat command
-%contrasts = {'f-vP', 'f-aP', 'f-tP'};
+contrasts = {'f-vP', 'f-aP', 'aAaP-f', 'vAvP-f', 'aA-aP', 'vA-vP', 'vAaA-vPaP', 'aPvP-f', 'V-A'};
 %contrasts = {'aA-aP', 'vA-vP', 'tA-tP'};
 % contrasts = {'vAaA-vPaP', 'aPvP-f'};
-contrasts = {'V-A'};
-subjCodes_list = [1];
-reverse_contrast = [true];
+%contrasts = {'V-A'};
+subjCodes_list = [2,2,2,2,1,1,1,2,1];
+reverse_contrast = [true, true, false, false, false, false, false, false, false];
 
 design = 'design.con'; % design.con for active contrasts, design_neg.con for passive contrasts
 N_contrasts = length(contrasts);
@@ -74,15 +74,18 @@ fsdir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/recons/fsave
 tfce_iters = '1000';
 dmats = {'design21', 'design19'};
 
-for cc = 1:N_contrasts
+masks = {'/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/lh.frontal_cortex_spmreshaped.nii',
+         '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/rh.frontal_cortex_spmreshaped.nii'};
+
+parfor cc = 1:N_contrasts
     contrast = contrasts{cc};
-    parfor hh = 1:length(hemis)
+    for hh = 1:length(hemis)
         hemi = hemis{hh};
         input = [res_path hemi '.ces.localizer_groupavg_' contrast '.nii'];
         outdir = [res_path contrast '/' hemi '/'];
         if reverse_contrast(cc)
             splt_contrast = split(contrast,'-');
-            contrast_str = [splt_contrast{2} '-' splt_contrast{1}]
+            contrast_str = [splt_contrast{2} '-' splt_contrast{1}];
             outdir = [res_path contrast_str '/' hemi '/'];
         end
         if ~isfolder(outdir)
@@ -90,23 +93,12 @@ for cc = 1:N_contrasts
         end
         
         % Reshape input data because FSL doesn't work nicely with freesurfer surface outputs
-        hdr = spm_vol(input);
-        data = spm_read_vols(hdr);
-        nframes = size(data,4);
-        data = reshape(data, [fs_num 1 1 nframes]);
-        if contains(contrast, 'f-') || reverse_contrast(cc) % switch contrast for interpretability if it is f-something
-            data = -data;
-        end
-        new_input = [res_path hemi '.ces.localizer_groupavg_' contrast '_reshaped.nii'];
-        for t = 1:nframes
-            hdr(t).fname = new_input;
-            hdr(t).dim = [fs_num 1 1];
-            spm_write_vol(hdr(t), data(:,:,:,t));
-        end
+        spm_nii_path = [res_path hemi '.ces.localizer_groupavg_' contrast '_reshaped.nii'];
+        fs2spm_nii(input, spm_nii_path, reverse_contrast(cc));
         
         % Run tfce with PALM
-        palm('-i', new_input, '-d', [res_path dmats{subjCodes_list(cc)} '.mat'], '-t' ,[res_path design], '-s',...
-            [fsdir hemi '.pial'], '-n', tfce_iters, '-ise', '-T', '-tfce2D', '-logp', '-o', outdir)
+        palm('-i', spm_nii_path, '-d', [res_path dmats{subjCodes_list(cc)} '.mat'], '-t' ,[res_path design], '-s',...
+            [fsdir hemi '.pial'], '-m', masks{hh}, '-n', tfce_iters, '-ise', '-T', '-tfce2D', '-logp', '-o', outdir)
 
     end
 end

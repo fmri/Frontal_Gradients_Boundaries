@@ -8,24 +8,27 @@ addpath('/projectnb/somerslab/tom/functions/');
 ccc;
 
 %% Initialize Key Variables
-contrasts = {'aAaP-f', 'vAaA-vPaP', 'vAvP-f'};
-latmed = 'medial'; % lateral or medial
+contrasts = {'aP-f', 'vAaA-vPaP', 'vP-f'};
+region = 'frontal_lateral_cortex'; % "frontal_lateral_cortex", "frontal_medial_cortex", "pVis_probabilistic", "pAud_probabilistic"
 
 hemis = {'lh', 'rh'};
 fs_num = 163842;
 
-contrast_data = nan(fs_num, 3, 2); % vertices x contrasts x hemispheres
+RGB_data = nan(fs_num, 3, 2); % vertices x contrasts x hemispheres
+contrast_stat_data = nan(fs_num,3,2);
+contrast_stat_data_cut = nan(fs_num,3,2);
+
 N_contrasts = length(contrasts);
 
 stat_pathbase = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/grouplevel/';
 tfce_path = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/group_contrast_TFCE/';
 
 % Load search space region for each hemisphere
-frontal_label_lh = ['/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/lh.frontal_' latmed '_cortex.label'];
-frontal_verts_lh = readtable(frontal_label_lh, 'FileType','text');
-frontal_label_rh = ['/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/rh.frontal_' latmed '_cortex.label'];
-frontal_verts_rh = readtable(frontal_label_rh, 'FileType','text');
-frontal_verts = {frontal_verts_lh, frontal_verts_rh};
+region_label_lh = ['/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/lh.' region '.label'];
+region_verts_lh = readtable(region_label_lh, 'FileType','text');
+region_label_rh = ['/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/rh.' region '.label'];
+region_verts_rh = readtable(region_label_rh, 'FileType','text');
+region_verts = {region_verts_lh, region_verts_rh};
 
 %% Load contrast data and convert to RGB range
 % Get union of significant tfce clusters for each contrast
@@ -43,14 +46,27 @@ for hh = 1:2
 
     for cc = 1:3
         contrast = contrasts{cc};
-
-        stat_path = [stat_pathbase hemi '.ces.localizer_groupavg_' contrast '.glmres/osgm/z.mgh'];
+        
+        if contains(contrast, '-f') % switch contrast string order bc it's switched in the file name
+            contrast_str = split(contrast,'-');
+            contrast_str = [contrast_str{2} '-' contrast_str{1}];
+            reverse_contrast = true;
+        else
+            contrast_str = contrast;
+            reverse_contrast = false;
+        end
+        stat_path = [stat_pathbase hemi '.ces.localizer_groupavg_' contrast_str '.glmres/osgm/z.mgh'];
         MRIdata = MRIread(stat_path);
+        if reverse_contrast
+            MRIdata.vol = -MRIdata.vol;
+        end
 
         % Nan out all vertices not is search space
-        inlabel_data = MRIdata.vol(frontal_verts{hh}.Var1+1);
+        inlabel_data = MRIdata.vol(region_verts{hh}.Var1+1);
         MRIdata.vol(:) = nan;
-        MRIdata.vol(frontal_verts{hh}.Var1+1) = inlabel_data;
+        MRIdata.vol(region_verts{hh}.Var1+1) = inlabel_data;
+
+        contrast_stat_data(:,cc,hh) = MRIdata.vol;
 
         % Zero out vertices in search space with negative statistic
         neg_stats = MRIdata.vol<0;
@@ -59,23 +75,42 @@ for hh = 1:2
         % Zero out vertices in search space that are not significant under any of the 3 contrasts
         MRIdata.vol(~union_sig) = nan;
 
+        contrast_stat_data_cut(:,cc,hh) = MRIdata.vol;
+
         % Normalize remaining values between 0-255
         ptiles = prctile(MRIdata.vol, [10,20,30,40,50,60,70,80,90]);
         ptiles = [0, ptiles, inf];
         RGB_vals = linspace(0,240,10);
         for vv = 1:length(ptiles)-1
             mask = MRIdata.vol >= ptiles(vv) & MRIdata.vol < ptiles(vv+1);
-            contrast_data(mask,cc,hh) = RGB_vals(vv);
+            RGB_data(mask,cc,hh) = RGB_vals(vv);
         end
-        %contrast_data(:,cc,hh) = (0 + MRIdata.vol-min(MRIdata.vol))  * (255 - 0) / (max(MRIdata.vol) - min(MRIdata.vol));
-        
     end
+
+    figure;
+    subplot(1,3,1);
+    histogram(contrast_stat_data(:,1,hh), 'NumBins',50); hold on;
+    histogram(contrast_stat_data(:,2,hh), 'NumBins',50);
+    histogram(contrast_stat_data(:,3,hh), 'NumBins',50);
+    legend(contrasts)
+    title([hemi ' non-normalized'])
+    subplot(1,3,2);
+    histogram(contrast_stat_data_cut(:,1,hh), 'NumBins',50); hold on;
+    histogram(contrast_stat_data_cut(:,2,hh), 'NumBins',50);
+    histogram(contrast_stat_data_cut(:,3,hh), 'NumBins',50);
+    title([hemi ' non-normalized cut'])
+    subplot(1,3,3);
+    histogram(RGB_data(:,1,hh), 'NumBins',50); hold on;
+    histogram(RGB_data(:,2,hh), 'NumBins',50);
+    histogram(RGB_data(:,3,hh), 'NumBins',50);
+    title([hemi ' normalized'])
+
 end
 
 
 %% Reorder vertices to match label order
-lh_reorder = contrast_data(frontal_verts_lh.Var1+1,:,1);
-rh_reorder = contrast_data(frontal_verts_rh.Var1+1,:,2);
+lh_reorder = RGB_data(region_verts_lh.Var1+1,:,1);
+rh_reorder = RGB_data(region_verts_rh.Var1+1,:,2);
 
 
 %% Make annotation file
@@ -108,7 +143,7 @@ for hh=1:2
         annot_ctable.table(uu+1,5) = color_label; % add color label to same row
 
         vert_mask = rgb_round(:,1)==color(1) & rgb_round(:,2)==color(2) & rgb_round(:,3)==color(3); % get verts with this color
-        vert_inds = frontal_verts{hh}.Var1(vert_mask) + 1; % get vert inds (add one bc vert inds start at 0 in labels)
+        vert_inds = region_verts{hh}.Var1(vert_mask) + 1; % get vert inds (add one bc vert inds start at 0 in labels)
         assert(all(annot_labels(vert_inds)==0), 'overlap error');
         annot_labels(vert_inds) = color_label;
     end
@@ -117,8 +152,8 @@ for hh=1:2
     annot_ctable.numEntries = N_colors + 1; % ROIs plus one for 'unknown' label 0
 
     % Finally write annotation file
-    write_annotation([annot_outpath hemi '.'  'VisAudWM_3contrast_RGB_' latmed '.annot'], verts_ref, annot_labels, annot_ctable);
-
+    write_annotation([annot_outpath hemi '.'  'VisAudWM_3contrast_RGB_' region '_sensory.annot'], verts_ref, annot_labels, annot_ctable);
+    clear annot_ctable
 end
 
 

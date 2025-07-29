@@ -1,0 +1,59 @@
+# FSBUILD freesurfer-linux-centos8_x86_64-7.4.1-20230613-7eb8460
+# MKAVERSION mkanalysis-sess 7.4.1
+# MKACMD /share/pkg.8/freesurfer/7.4.1_CentOS-8/install/freesurfer/fsfast/bin/mkanalysis-sess -a localizer_block_regression_0sm_run1 -funcstem fmcpr_tu.siemens.sm0.mni305.2mm.nii.gz -mni305 2 -fsd localizer -event-related -paradigm localizer_condition_timing_perblock.para -nconditions 20 -refeventdur 16 -TR 2 -polyfit 2 -spmhrf 1 -mcextreg -runlistfile localizer_contrasts_runlistfile_run1.txt -per-run -force
+# DATE Thu Jul 24 16:30:49 EDT 2025
+
+analysis localizer_block_regression_0sm_run1
+mcstem fmcpr
+funcstem fmcpr_tu.siemens.sm0.mni305.2mm.nii.gz
+fsd localizer
+runlistfile localizer_contrasts_runlistfile_run1.txt
+TR 2
+RegDOF 6
+PerSession 0
+RawSpace volume mni305 2
+mask brain
+RawFWHM 0
+RawSTC none
+nSliceGroups 1
+UseB0DC 0
+ApplySubCortMask 1
+inorm 100
+acfbins 30
+fixacf  1
+acffwhm 20
+acfsvd  0
+designtype event-related
+nskip 0
+polyfit 2
+HPFCutoffHz 0
+HeteroGCor 0
+nconditions 20
+parname localizer_condition_timing_perblock.para
+RefEventDur 16
+timewindow 40.000000
+prestim 0
+TER 0.050000
+spmhrf 1
+stimulusdelay -1.00000000000000000000
+Condition 1 Condition01
+Condition 2 Condition02
+Condition 3 Condition03
+Condition 4 Condition04
+Condition 5 Condition05
+Condition 6 Condition06
+Condition 7 Condition07
+Condition 8 Condition08
+Condition 9 Condition09
+Condition 10 Condition10
+Condition 11 Condition11
+Condition 12 Condition12
+Condition 13 Condition13
+Condition 14 Condition14
+Condition 15 Condition15
+Condition 16 Condition16
+Condition 17 Condition17
+Condition 18 Condition18
+Condition 19 Condition19
+Condition 20 Condition20
+nuisreg mcprextreg 3
