@@ -270,3 +270,56 @@ parfor ss = 1:length(subjCodes)
         ' -no-preproc -overwrite'])
 
 end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 3way localizer for MM
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+analysis_name_lh_3way = 'localizer_contrasts_0sm_3way_lh';
+analysis_name_rh_3way = 'localizer_contrasts_0sm_3way_rh';
+rlf_name = 'localizer_contrasts_runlistfile.txt';
+subjCodes = {'MM'};
+
+nconditions = 5;
+run_mkanalysis = true;
+run_mkcontrast = true;
+
+% localizer condition orders (3way)
+% 1 = aA
+% 2 = tA
+% 3 = vA
+% 4 = f
+% 5 = p
+
+if run_mkanalysis
+    unix(['mkanalysis-sess -a ' analysis_name_lh_3way ' -funcstem ' funcstem_lh ...
+        ' -surface fsaverage lh -fsd 3WayLocalizer -event-related -paradigm ' para_name ...
+        ' -nconditions ' nconditions ' -refeventdur 32 -TR ' num2str(TR) ...
+        ' -polyfit 1 -spmhrf 0 -mcextreg -runlistfile ' rlf_name ' -per-run -force'])
+
+    unix(['mkanalysis-sess -a ' analysis_name_rh_3way ' -funcstem ' funcstem_rh ...
+        ' -surface fsaverage rh -fsd 3WayLocalizer -event-related -paradigm ' para_name ...
+        ' -nconditions ' nconditions ' -refeventdur 32 -TR ' num2str(TR) ...
+        ' -polyfit 1 -spmhrf 0 -mcextreg -runlistfile ' rlf_name ' -per-run -force'])
+end
+
+
+if run_mkcontrast
+
+        unix(['mkcontrast-sess -analysis ' analysis_name_lh_3way ' -contrast ' ...
+            'vAaA-p -a 1 -a 3 -c 5'])
+        unix(['mkcontrast-sess -analysis ' analysis_name_rh_3way ' -contrast ' ...
+            'vAaA-p -a 1 -a 3 -c 5'])
+
+end
+
+for ss = 1:length(subjCodes)
+
+    subjCode = subjCodes{ss};
+
+    % run glm
+    unix(['selxavg3-sess -s ' subjCode ' -d ' data_dir ' -analysis ' analysis_name_lh_3way ...
+        ' -no-preproc -overwrite'])
+    unix(['selxavg3-sess -s ' subjCode ' -d ' data_dir ' -analysis ' analysis_name_rh_3way ...
+        ' -no-preproc -overwrite'])
+
+end

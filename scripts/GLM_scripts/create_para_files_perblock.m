@@ -12,10 +12,11 @@ ccc;
 experiment_name = 'spacetime';
 subjDf = load_subjInfo();
 subjDf_cut = subjDf(~strcmp(subjDf.([experiment_name,'Runs']),''),:);
-subjCodes = subjDf_cut.subjCode(~ismember(subjDf_cut.subjCode, {'AH', 'SL', 'RR', 'MM' ,'PP'}));
+subjCodes = subjDf_cut.subjCode(~ismember(subjDf_cut.subjCode, {'AH', 'SL', 'RR'}));
+%subjCodes = {'MM', 'PP'};
 N_subjs = length(subjCodes);
 
-sections_per_block = 2;
+sections_per_block = 16;
 base_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
 
 % desired localizer condition order (sections_per_block=2):
@@ -50,7 +51,7 @@ for ss = 1:N_subjs
         old_para = readmatrix(old_parafile_path, 'FileType', 'text');
         new_para = old2new_para(old_para, sections_per_block);
 
-        new_parafile_path = [subjdir '00' num2str(rr) '/localizer_condition_timing_perblock.para'];
+        new_parafile_path = [subjdir '00' num2str(rr) '/localizer_condition_timing_perblock_16sections.para'];
         writematrix(new_para, new_parafile_path, 'filetype','text', 'delimiter','\t')
     end
 

@@ -107,7 +107,7 @@ for ss = 1:N_subjs
                 tstat_data.vol = -tstat_data.vol; % reverse contrast for to get sensory drive (passive-fixation)
             end
 
-            % nan out all gstats except those in the frontal lobe label
+            % nan out all stats except those in the frontal lobe label
             inlabel_data = tstat_data.vol(frontal_verts{hh}.Var1+1);
             tstat_data.vol(:) = nan;
             tstat_data.vol(frontal_verts{hh}.Var1+1) = inlabel_data;
