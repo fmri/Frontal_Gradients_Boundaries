@@ -121,3 +121,18 @@ for cc = 1:N_contrasts
 end
 
 
+% for cc = 1:N_contrasts
+%     contrast = contrasts{cc};
+%     if reverse_contrast(cc)
+%         splt_contrast = split(contrast,'-');
+%         contrast = [splt_contrast{2} '-' splt_contrast{1}];
+%     end
+%     for hh = 1:length(hemis)
+%         hemi = hemis{hh};
+%         input = [res_path contrast '/' hemi '/' '_dpv_tstat.nii'];
+%         output = [res_path contrast '/' hemi '/' '_dpv_tstat.nii'];
+%         function_path = '/projectnb/somerslab/tom/functions/nifti22nifti1.py';
+%         cmd = sprintf('python3 %s %s %s', function_path, input, output);
+%         unix(['module load miniconda && conda activate tom_env && ' cmd])
+%     end
+% end

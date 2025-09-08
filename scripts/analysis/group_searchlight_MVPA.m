@@ -16,16 +16,19 @@ subjDf_cut = subjDf(~strcmp(subjDf.([experiment_name,'Runs']),''),:);
 subjCodes = subjDf_cut.subjCode(~ismember(subjDf_cut.subjCode, {'AH', 'SL', 'RR', 'PP', 'MM'})); % N=19 (all have fixation condition)
 %subjCodes = subjDf_cut.subjCode(~ismember(subjDf_cut.subjCode, {'AH', 'SL', 'RR'})); % N=21 (MM and PP don't have fixation)
 N_subjs = length(subjCodes);
+hemis = {'lh', 'rh'};
 
 basedir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
 results_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/MVPA_results/';
 
 % We are trying to predict WM vs SMC trials, so we are looking at all WM and all SMC conditions
 conds_perblock_str = 'blocktrials'; % blocktrials or 16trials
-save_str = 'Aud_F';
+save_str = 'AWM_ASMC';
 conds_perblock = 1; %16;
-conditions = [4,5,6,10]; %[1:96]; % all visual WM, auditory WM, visual SMC, and auditory SMC
-condition_labels = [1,1,1,0]; %[ones(conds_perblock*2,1); zeros(conds_perblock,1); ones(conds_perblock*2,1); zeros(conds_perblock,1)];
+conditions = [4,5,6]; %[1:96]; % all visual WM, auditory WM, visual SMC, and auditory SMC
+condition_labels = [1,1,0]; %[ones(conds_perblock*2,1); zeros(conds_perblock,1); ones(conds_perblock*2,1); zeros(conds_perblock,1)];
+mask_neg_group_tstats = true;
+conditions_str = 'aA-aP'; % only necessary if mask_neg_group_tstats is true, used to find group tstat file
 
 % localizer condition order (sections_per_block=2):
 % 1-4 = vA (block 1, section 1; block 1, section 2; block 2, section 1; block 2, section 2)
@@ -123,7 +126,7 @@ end
 CVfold = subjlist; % information for leave-one-subject-out
 dist = 2; % radius of searchlight, in voxels. radius of 2 gives a small sphere that is 33 voxels
 metric = 'Pearson'; % will use correlation between choice and prediction to gauge performance
-method = 'PLS1'; 
+method = 'SVM'; 
 
 % Remove nans (this should only happen if a full run is bad)
 if any(isnan(x),'all')
@@ -173,16 +176,28 @@ tic;
 unix(['randomise -i ' input_data ' -o ' output_file ' -m ' mask ' -1 -T -n 1000']) % using randomise TFCE from FSL with -1 for 1 sample t-test, -T for TFCE, and -n 5000 for 5000 iterations permutation testing
 toc
 
-% Convert volume to surface with vol2sur
+% Convert volume to surface with vol2surf
 reg_file = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/recons/fsaverage/mri.2mm/reg.2mm.dat';
 unix(['mri_vol2surf --src ' output_file '_tfce_corrp_tstat1.nii.gz --out ' output_file '_tfce_corrp_tstat1_surf_lh.nii --reg ' reg_file ' --trgsubject fsaverage --hemi lh' ])
 unix(['mri_vol2surf --src ' output_file '_tfce_corrp_tstat1.nii.gz --out ' output_file '_tfce_corrp_tstat1_surf_rh.nii --reg ' reg_file ' --trgsubject fsaverage --hemi rh' ])
 unix(['mri_vol2surf --src ' output_file '_tstat1.nii.gz --out ' output_file '_tstat1_surf_lh.nii --reg ' reg_file ' --trgsubject fsaverage --hemi lh' ])
 unix(['mri_vol2surf --src ' output_file '_tstat1.nii.gz --out ' output_file '_tstat1_surf_rh.nii --reg ' reg_file ' --trgsubject fsaverage --hemi rh' ])
 
+%%
+if mask_neg_group_tstats
+    for hh = 1:length(hemis)
+        hemi = hemis{hh};
 
+        % load group GLM stats
+        group_tstats = MRIread(['/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/group_contrast_TFCE/' conditions_str '/' hemi '/_dpv_tstat.nii']);
+        neg_mask = group_tstats.vol < -2;
+        
+        tfce_results = MRIread([output_file '_tfce_corrp_tstat1_surf_' hemi '.nii']);
+        tfce_results.vol(neg_mask) = 0;
+        MRIwrite(tfce_results, [output_file '_tfce_corrp_tstat1_surf_negmask_' hemi '.nii'])
 
-
+    end
+end
 
 
 
