@@ -3,6 +3,13 @@
 %%% boundary-based model of change in function (contrast PSC) across an ROI in
 %%% individual subjects
 %%%
+%%% TODOs: 
+%%% - Technically we should be calculating a separate group average
+%%% axis of largest change and initialial fit params using a leave one out
+%%% method for each subject 
+%%% - If linear limited wins, check if length of linear piece is long
+%%%   enough to cross multiple voxels
+%%%
 %%% Tom Possidente - Septemeber 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -24,9 +31,17 @@ N_subjs = length(subjCodes);
 
 subjdir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
 fs_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/recons/fsaverage/surf/';
+label_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/';
 
-axis_method = 'average'; % regression or average
+models = {'step', 'linear', 'linear limited'};
+plot_fits = true;
 
+axis_method = 'average'; % regression (uses regression to find axis of largest difference) or average (uses weighted average of positive and negative pts to make line)
+
+%% Load label file for probabilistic ROIs
+label_lh = readtable([label_dir hemis{1} '.' latmed '_VisAudWM_combined_TFCE.label'], 'FileType','text');
+label_rh = readtable([label_dir hemis{2} '.' latmed '_VisAudWM_combined_TFCE.label'], 'FileType','text');
+labels = {label_lh, label_rh};
 
 %% Load probabilistic ROI (flat patch) to use for all subjs
 ROI_lh = read_patch([fs_dir hemis{1} '.' latmed '_VisAudWM_combined_TFCE_flat.patch']);
@@ -88,8 +103,30 @@ for hh = 1:length(hemis)
             % Get new x and y axes directions where x axis is now 2d line of greatest change in z
             new_x{hh} = coefs_norm;
             new_y{hh} = [-coefs_norm(2); coefs_norm(1)]; % perpendicular to new_x (rotate 90 deg)
-        case 'average'
             
+        case 'average'
+            % Get weighted average of positive x,y coords
+            pos_mask = group_data_diff{hh} >= 0;
+            weighted_pos(1) = sum(ROIs{hh}.x(pos_mask) .* group_data_diff{hh}(pos_mask)) / sum(group_data_diff{hh}(pos_mask));
+            weighted_pos(2) = sum(ROIs{hh}.y(pos_mask) .* group_data_diff{hh}(pos_mask)) / sum(group_data_diff{hh}(pos_mask));
+
+            % Get weighted average of negative x,y coords
+            neg_mask = group_data_diff{hh} < 0;
+            weighted_neg(1) = sum(ROIs{hh}.x(neg_mask) .* group_data_diff{hh}(neg_mask)) / sum(group_data_diff{hh}(neg_mask));
+            weighted_neg(2) = sum(ROIs{hh}.y(neg_mask) .* group_data_diff{hh}(neg_mask)) / sum(group_data_diff{hh}(neg_mask));
+            
+            % Direction vector from neg to postive means will be new x axis
+            v = weighted_pos - weighted_neg;
+            new_x{hh} = v' / norm(v);  % normalize
+            
+            % Perpendicular vector (90° rotation)
+            new_y{hh} = [-new_x{hh}(2); new_x{hh}(1)];
+
+            % Plot 3D data surface
+            figure;
+            scatter3(ROIs{hh}.x, ROIs{hh}.y, group_data_diff{hh});
+            hold on;
+            plot([weighted_pos(1), weighted_neg(1)], [weighted_pos(2), weighted_neg(2)], 'LineWidth',5, 'Color', 'r');
     end
 end
 
@@ -102,35 +139,44 @@ for hh = 1:length(hemis)
     ROIs{hh}.y = xy_rotated(2,:);
     
     % Plot psc data along new axes
-    [xq,yq] = meshgrid(linspace(min(ROIs{hh}.x), max(ROIs{hh}.x), 100),...
-                   linspace(min(ROIs{hh}.y), max(ROIs{hh}.y), 100));
-    zq = griddata(ROIs{hh}.x, ROIs{hh}.y, group_data_diff{hh}, xq, yq, 'linear'); % interpolate to 100x100 grid
+    % [xq,yq] = meshgrid(linspace(min(ROIs{hh}.x), max(ROIs{hh}.x), 100),...
+    %                linspace(min(ROIs{hh}.y), max(ROIs{hh}.y), 100));
+    % zq = griddata(ROIs{hh}.x, ROIs{hh}.y, group_data_diff{hh}, xq, yq, 'linear'); % interpolate to 100x100 grid
     figure;
-    surf(xq, yq, zq); % plot surface    
+    % surf(xq, yq, zq); % plot surface    
+    scatter3(ROIs{hh}.x, ROIs{hh}.y, group_data_diff{hh});
     xlabel('x'); ylabel('y'); zlabel('PSC');
 end
 
 
-%% Loop over subjects and get contrast data within ROI
+%% Loop over subjects and fit boundary and gradient models to contrast data
 ROI_pscs = {nan(length(ROIs{1}.ind),2,N_subjs), nan(length(ROIs{2}.ind),2,N_subjs)};
+winning_model = nan(N_subjs, length(hemis));
+model_comp = nan(N_subjs, length(hemis));
+winning_rsquare = nan(N_subjs, length(hemis));
+linear_xdist = nan(N_subjs, length(hemis));
 
 for hh = 1:length(hemis)
     hemi = hemis{hh};
-    [xq,yq] = meshgrid(linspace(min(ROIs{hh}.x), max(ROIs{hh}.x), 100),...
-                   linspace(min(ROIs{hh}.y), max(ROIs{hh}.y), 100));
+    
+    % Calculate initial guesses for boundary model parameters using group-level data
+    x_midpoint = mean(ROIs{hh}.x); % boundary step function location guess
+    min_guess = mean(group_data_diff{hh}(group_data_diff{hh}<0)); % boundary model lower step guess
+    max_guess = mean(group_data_diff{hh}(group_data_diff{hh}>0)); % boundary model upper step guess
+    lower_bound = min(ROIs{hh}.x); % Lower bound on step location
+    upper_bound = max(ROIs{hh}.x); % upper bound on step location
 
-    % Calculate 10 possible boundary/gradient x-axis 'midpoints'
-    x_step = range(ROIs{hh}.x)/11;
-    midpts = min(ROIs{hh}.x)+x_step:x_step:max(ROIs{hh}.x)-x_step;
+    % Calculate initial guesses for gradient model parameters using group-level data
+    X = [ROIs{hh}.x; ones(1,length(ROIs{hh}.x))]';
+    coefs = X \ group_data_diff{hh}'; % linear regression on only x coordinates
+    slope_guess = coefs(1); % 1st param is slope
+    intercept_guess = coefs(2); % 2nd is intercept
 
-    % Make baseline boundary and gradient model for each midpoint
-    boundary_model = {};
-    gradient_model = {};
-    for mm = 1:length(midpts)
-        
-    end
+    % Calculate initial guesses for linear limited model parameters 
+    start_line_guess = prctile(ROIs{hh}.x, 25); % lets say it starts at about 25% of x coordinates 
+    end_line_guess = prctile(ROIs{hh}.x, 75); % lets say it ends at about 75% of x coordinates
 
-    for ss = 1:N_subjs
+    for ss = 1:N_subjs  
         subjCode = subjCodes{ss};
         for cc = 1:length(contrasts)
             % Get contrast PSC data
@@ -143,12 +189,80 @@ for hh = 1:length(hemis)
         % Get difference between contrasts in ROI
         ROI_psc_diffs = ROI_pscs{hh}(:,2,ss) - ROI_pscs{hh}(:,1,ss);
         
-        % Loop through midpoints and fit each model
-        for mm = 1:length(midpts)
-            % Fit boundary model
-        
+        % Fit step-wise funciton to data (boundary model)
+        step_model = fittype('a*(x < x0) + b*(x >= x0) + y*0', ... % step function. Must include y in the function even if it has no mathematical effect
+                            'dependent', 'z',...
+                            'independent', {'x','y'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
+                            'coefficients', {'a','b','x0'}); % a is pre-step, b is post-step, x0 is step location on x axis
+        [fit_res_step, gof_step, info_step] = fit([ROIs{hh}.x', ROIs{hh}.y'], ROI_psc_diffs, step_model, ...
+                                                 'StartPoint', [max_guess, min_guess, x_midpoint],...
+                                                 'Lower', [-Inf, -Inf, lower_bound],... % 
+                                                 'upper', [Inf, Inf, upper_bound]);  % 
 
-            % Fit gradient model
+        % Fit 2D plane to data (gradient model)
+        linear_model = fittype('x*a + b + y*0',... % linear function
+                               'dependent', 'z',...
+                               'independent', {'x','y'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
+                               'coefficients', {'a','b'}); % a is slope, b is intercept
+
+        [fit_res_linear, gof_linear, info_linear] = fit([ROIs{hh}.x', ROIs{hh}.y'], ROI_psc_diffs, linear_model, ...
+                                                        'StartPoint', [slope_guess, intercept_guess]);  
+
+        % Fir 2D plane to subsection of data (gradient adjusted model)
+        linearlim_model = fittype('a*(x < x1) + b*(x > x2) + ( a + ( (b-a)/(x2-x1)  * (x-x1) ) ) * ( (x > x1) & (x < x2) ) + y*0', ... % piecewise function, constant from -Inf to x1, linear from x1 to x2, constant from x2 to Inf. Must include y in the function even if it has no mathematical effect
+                            'dependent', 'z',...
+                            'independent', {'x','y'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
+                            'coefficients', {'a','b','x1', 'x2'}); % a is z from -Inf to x1, b is z from x2 to Inf, x1 is where to start linear piece, x2 is where to end linear piece
+        
+        [fit_res_linearlim, gof_linearlim, info_linearlim] = fit([ROIs{hh}.x', ROIs{hh}.y'], ROI_psc_diffs, linearlim_model, ...
+                                                                 'StartPoint', [max_guess, min_guess, start_line_guess, end_line_guess],...
+                                                                 'Lower', [-Inf, -Inf, lower_bound, lower_bound],...
+                                                                 'Upper', [Inf, Inf, upper_bound, upper_bound]);  
+
+        % Plot fit (debugging/visualization)
+        if plot_fits
+            figure;
+            scatter3(ROIs{hh}.x, ROIs{hh}.y, ROI_psc_diffs); xlabel('x'); ylabel('y'); zlabel('psc'); hold on;
+            plot(fit_res_linear); hold on;
+            plot(fit_res_step);
+            plot(fit_res_linearlim)
+            view([0 0]);
+        end
+
+        % Calculate log likelihood of each model
+        LL_step = -0.5 * info_step.numobs * log( 2*pi*(gof_step.rmse^2) ) - (1/(2*(gof_step.rmse^2))) * gof_step.sse;
+        LL_linear = -0.5 * info_linear.numobs * log( 2*pi*(gof_linear.rmse^2) ) - (1/(2*(gof_linear.rmse^2))) * gof_linear.sse;
+        LL_linearlim = -0.5 * info_linearlim.numobs * log( 2*pi*(gof_linearlim.rmse^2) ) - (1/(2*(gof_linearlim.rmse^2))) * gof_linearlim.sse;
+
+        % Compare AIC/BIC between models
+        [aic, bic] = aicbic([LL_step; LL_linear; LL_linearlim], [info_step.numparam; info_linear.numparam; info_linearlim.numparam]);
+        [~,ind] = min(bic);
+        disp([models{ind}])
+        model_comp(ss,hh) = bic(ind) - min(bic(~ismember(1:3,ind)));  % compare best model BIC to next best model BIC
+
+        % Check if the "winning" model fit the data well
+        gofs = {gof_step, gof_linear, gof_linearlim};
+        disp(['winning model r^2: ' num2str(round(gofs{ind}.rsquare,3))]);
+        winning_rsquare(ss,hh) = gofs{ind}.rsquare;
+
+        % If linear limited is the winner, check whether the linear piece is large enough to cross multiple voxels
+        if ind==3
+            mean_y1 = mean(ROIs{hh}.y( (ROIs{hh}.x<fit_res_linearlim.x1+0.5) & (ROIs{hh}.x>fit_res_linearlim.x1-0.5) ) ); % get mean y coord near x1
+            mean_y2 = mean(ROIs{hh}.y( (ROIs{hh}.x<fit_res_linearlim.x2+0.5) & (ROIs{hh}.x>fit_res_linearlim.x2-0.5) ) ); % get mean y coord near x1
+            linear_extent = [fit_res_linearlim.x1, mean_y1, ; fit_res_linearlim.x2, mean_y2];
+            
+            % Find vertex nearest (x1, mean_y) and (x2, mean_y) and get RAS coords
+            [dist1, vert1_ind] = min(cell2mat(arrayfun(@(x) pdist([linear_extent(1,:); [ROIs{hh}.x(x), ROIs{hh}.y(x)]]), 1:length(ROIs{hh}.x), 'UniformOutput', false) ) );
+            assert(dist1<0.5, 'Poor vertex match')
+            vert1 = ROIs{hh}.ind(vert1_ind);
+            RAS_vert1 = labels{hh}{labels{hh}.Var1==vert1, 2:4};
+            [dist2, vert2_ind] = min(cell2mat(arrayfun(@(x) pdist([linear_extent(2,:); [ROIs{hh}.x(x), ROIs{hh}.y(x)]]), 1:length(ROIs{hh}.x), 'UniformOutput', false) ) );
+            assert(dist2<0.5, 'Poor vertex match')
+            vert2 = ROIs{hh}.ind(vert2_ind);
+            RAS_vert2 = labels{hh}{labels{hh}.Var1==vert2, 2:4};
+
+            % Find distance between verts
+            linear_xdist(ss,hh) = pdist([RAS_vert1; RAS_vert2]);
         end
 
     end
