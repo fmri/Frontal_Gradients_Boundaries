@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% The purpose of this script is to make conjunction makes from the MVPA
+% The purpose of this script is to make conjunction maps from the MVPA
 % searchlight results
 % Tom Possidente - August 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
