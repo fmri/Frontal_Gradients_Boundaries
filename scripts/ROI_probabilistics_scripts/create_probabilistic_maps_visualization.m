@@ -17,12 +17,16 @@ N{2} = length(subjCodes{2});
 
 
 %% Initialize variables
-contrasts = {'vA-vP', 'aA-aP'};
-contrast_subjs = [1,1];
-reverse_contrast = [false false];
+%contrasts = {'vA-vP', 'aA-aP'};
+% contrast_subjs = [1,1];
+% reverse_contrast = [false false];
+contrasts = {'aA-aP'};
+contrast_subjs = [1];
+reverse_contrast = [false];
 intersection = true; % false to loop over contrasts separately, true to make probabilistic of intersection of 2 contrasts
 
 data_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
+ROI_dir_old = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/ROIs/';
 
 p_thresh = 1.3;
 N_contrasts = length(contrasts);
@@ -30,36 +34,57 @@ hemis = {'lh', 'rh'};
 N_hemis = length(hemis);
 N_vertices = 163842;
 
+lh_cortex_label = readtable([ROI_dir_old 'lh_inflated_wholecortex.label'], 'FileType','text');
+rh_cortex_label = readtable([ROI_dir_old 'rh_inflated_wholecortex.label'], 'FileType','text');
+lhrh_cortex_label = {lh_cortex_label, rh_cortex_label};
+
+contrast_str = '';
+for cc = 1:N_contrasts
+    contrast_str = [contrast_str contrasts{cc} '_'];
+end
+contrast_str = contrast_str(1:end-1);
 
 %% Loop through subjs, extract contrast stat data, make probabilistic nii
 if intersection
-    assert(~any(reverse_contrast), 'reverse contrasts for intersection contrasts not yet implemented')
-    assert(contrast_subjs(1)==contrast_subjs(2), 'intersection contrasts with different Ns for each contrast not yet implemented')
     for hh = 1:N_hemis
         hemi = hemis{hh};
         subj_vertices.vol = zeros(1,N_vertices);
         for ss = 1:N{contrast_subjs(1)}
             subjCode = subjCodes{contrast_subjs(1)}{ss};
-            stat_path1 = [data_dir subjCode '/localizer/localizer_contrasts_' hemi '/' contrasts{1} '/sig.nii.gz'];
-            stat_data1 = MRIread(stat_path1);
-            stat_path2 = [data_dir subjCode '/localizer/localizer_contrasts_' hemi '/' contrasts{2} '/sig.nii.gz'];
-            stat_data2 = MRIread(stat_path2);
+            binarized_stat_data = true(1, N_vertices);
+            for cc = 1:N_contrasts
 
-            %%%
-            % stat_path3 = [data_dir subjCode '/localizer/localizer_contrasts_' hemi '/vA-aA/sig.nii.gz'];
-            % stat_data3 = MRIread(stat_path3);
-            %%%
+                stat_path = [data_dir subjCode '/localizer/localizer_contrasts_' hemi '/' contrasts{cc} '/sig.nii.gz'];
+                stat_data = MRIread(stat_path);
 
-            binarized_stat_data = stat_data1.vol >= p_thresh & stat_data2.vol >= p_thresh;
-            %binarized_stat_data = stat_data1.vol >= p_thresh & stat_data2.vol >= p_thresh & abs(stat_data3.vol) < p_thresh;
+                if ismember(contrasts{1}, {'f-vP', 'f-aP', 'f-tP'}) || reverse_contrast(1)
+                    stat_data.vol = -stat_data.vol; % reverse contrast for interpretability
+                end
+
+                binarized_stat_data = stat_data.vol >= p_thresh & binarized_stat_data;
+                
+            end
 
             subj_vertices.vol = subj_vertices.vol + binarized_stat_data;
+
         end
 
         % Save nii file
-
-        MRIwrite(subj_vertices, [hemi '_' contrasts{1} '_' contrasts{2} '_intersection_probabilistic_visualization.nii'])
+        MRIwrite(subj_vertices, [hemi '_' contrast_str '_intersection_probabilistic_visualization.nii'])
         disp(['Finishing ' hemi ' ' contrasts]);
+
+        % create threhsolded label file
+        cortex_label = lhrh_cortex_label{hh};
+        binarized_probabilistic = subj_vertices.vol >= 5;
+        label_inds = find(binarized_probabilistic) - 1;
+        label_rows = cortex_label(ismember(cortex_label.Var1, label_inds),:);
+    
+        % Make label file 
+        label_fname = [hemi '_' contrast_str '_intersection_probabilistic_thresh5.label'];
+        label_file = fopen(label_fname,'w');
+        fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label_rows,1)) '\n']);
+        writematrix(table2array(label_rows), label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
+        fclose(label_file);
     end
 else
     for cc = 1:N_contrasts
@@ -139,10 +164,10 @@ for hh = 1:2
 
     % Make label file 
     label_fname_vis = [ROI_dir hemi '_' comp_contrasts{1} '_minus_' comp_contrasts{2} '_probabilistic_thresh4.label'];
-    label_file_vis = fopen(label_fname_vis,'w');
-    fprintf(label_file_vis, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label_rows_vis,1)) '\n']);
+    label_file = fopen(label_fname_vis,'w');
+    fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label_rows_vis,1)) '\n']);
     writematrix(table2array(label_rows_vis), label_fname_vis, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
-    fclose(label_file_vis);
+    fclose(label_file);
 
     label_fname_aud = [ROI_dir hemi '_' comp_contrasts{2} '_minus_' comp_contrasts{1} '_probabilistic_thresh4.label'];
     label_file_aud = fopen(label_fname_aud,'w');
