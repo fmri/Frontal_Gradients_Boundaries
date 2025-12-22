@@ -15,24 +15,19 @@ ROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/R
 
 hemis = {'lh', 'rh'};
 ROI_names = {'sPCS', 'iPCS', 'midIFS', 'aINS', 'preSMA'};
-contrasts = {'vA-vP', 'vP-f', 'aA-aP', 'aP-f'};
-set_names = {'visWMSMC', 'visWMSMC', 'audWMSMC', 'audWMSMC'};
+% contrasts = {'vA-vP', 'vP-f', 'aA-aP', 'aP-f', 'vP-f_ap-f', 'vA-vP_aA-aP'};
+% set_names = {'visWMSMC', 'visWMSMC', 'audWMSMC', 'audWMSMC', 'WMSMC', 'WMSMC'};
+contrasts = {'vA-vP', 'vP-f'};
+set_names = {'visWMSMC', 'visWMSMC'}; % WMSMC, visWMSMC. audSMC
 
 N_hemis = length(hemis);
 N_ROIs = length(ROI_names);
 N_contrasts = length(contrasts);
 
 COMs = nan(N_ROIs, N_contrasts, N_hemis, 2); % storage for center of masses XY coordinates
-COM_vert_inds = nan(N_ROIs, N_contrasts, N_hemis); % storage for vertex index closes to COM
+COM_vert_inds = nan(N_ROIs, N_contrasts, N_hemis); % storage for vertex index closest to COM
 
-
-plotting_diagnostics = false;
-
-gauss2d = fittype( ...
-    'a*exp(-((x-b)^2/(2*c^2) + (y-d)^2/(2*e^2))) + f', ...
-    'independent', {'x','y'}, ...
-    'dependent', 'z');
-
+plotting_diagnostics = true;
 
 %% Loop through ROI probabilistic data and calculate center of mass for each
 
@@ -42,15 +37,8 @@ for hh = 1:N_hemis
         contrast = contrasts{cc};
         set_name = set_names{cc};
 
-        if strcmp(contrast(end-1:end), '-f')
-            contrast_str_mod = strsplit(contrast, '-');
-            contrast_str_nii = [contrast_str_mod{2} '-' contrast_str_mod{1}];
-        else
-            contrast_str_nii = contrast;
-        end
-
         % Load probabilistic data for full hemisphere
-        prob_data_path = [ROI_dir hemi '_' contrast_str_nii '_intersection_probabilistic_visualization.nii'];
+        prob_data_path = [ROI_dir hemi '_' contrast '_intersection_probabilistic_visualization.nii'];
         prob_data = MRIread(prob_data_path);
 
         for rr = 1:N_ROIs
@@ -58,7 +46,13 @@ for hh = 1:N_hemis
 
             % Load patch file
             patch_path = [ROI_dir hemi '.' ROI_name '_probabilistic_' set_name '_thresh5_flat.patch'];
-            patch = read_patch(patch_path);
+            if strcmp(ROI_name, 'aINS') & strcmp(hemi, 'rh') & strcmp(set_name, 'WMSMC') % missing aINS for SMC condition
+                COM_vert_inds(rr,cc,hh) = nan;
+                COMs(rr,cc,hh,:) = nan;
+                continue
+            else
+                patch = read_patch(patch_path);
+            end
 
             % Load label file
             label_path = [ROI_dir hemi '_' ROI_name '_probabilistic_' replace(contrast, '-', '_') '_thresh5.label'];
@@ -85,18 +79,26 @@ for hh = 1:N_hemis
             if vert_dist>0.999
                 keyboard;
             end
-            COM_vert_inds(rr,cc,hh) = patch_inds(closest_ind);
 
-            % %Fit gaussian
-            % start = [max(ROI_data), mean(x), mean(y), std(x), std(y), min(ROI_data)];
-            % [fitresult, gof, stats] = fit([x',y'], ROI_data', gauss2d, 'Start', start);
+            COM_vert_inds(rr,cc,hh) = patch_inds(closest_ind);
+            
+            if plotting_diagnostics
+                figure; 
+                scatter(x,y,[],ROI_data, 'filled'); hold on; 
+                scatter(COMs(rr,cc,hh,1), COMs(rr,cc,hh,2), 100, 'r', 'filled'); 
+                scatter(x(closest_ind), y(closest_ind), 100, 'o', 'filled');
+                title([hemi ' ' ROI_name ' ' contrast])
+            end
+
         end
     end
 end
 
 %% Compare direction and distance between COMs
-compare = [1,2; 3,4];
-compare_names = {'vis_WMvsSMC', 'aud_WMvsSMC'};
+% compare = [1,2; 3,4];
+% compare_names = {'vis_WMvsSMC', 'aud_WMvsSMC'};
+compare = [1,2];
+compare_names = {'WMvsSMC'};
 coord_diffs = table();
 
 counter = 0;
@@ -110,14 +112,18 @@ for hh = 1:N_hemis
             COM_SMC = squeeze(COMs(rr,compare(cc,2),hh,:));
             
             if plotting_diagnostics
-                patch_path = [ROI_dir hemi '.' ROI_name '_probabilistic_' set_names{cc+1} '_thresh5_flat.patch'];
-                patch = read_patch(patch_path);
-                figure; 
-                scatter(patch.x, patch.y); hold on; 
-                scatter(COM_WM(1), COM_WM(2), 25, 'filled');
-                scatter(COM_SMC(1), COM_SMC(2), 25, 'filled');
-                legend({'coordinates', 'WM peak', 'SMC peak'});
-                title([hemis{hh} ' ' ROI_name ' ' set_names{cc+1}]);
+                if strcmp(ROI_name, 'aINS') & strcmp(hemi, 'rh') & strcmp(set_name, 'WMSMC') % missing aINS for SMC condition
+                    disp('rh aINS unavailable');
+                else
+                    patch_path = [ROI_dir hemi '.' ROI_name '_probabilistic_' set_names{cc+1} '_thresh5_flat.patch'];
+                    patch = read_patch(patch_path);
+                    figure; 
+                    scatter(patch.x, patch.y); hold on; 
+                    scatter(COM_WM(1), COM_WM(2), 25, 'filled');
+                    scatter(COM_SMC(1), COM_SMC(2), 25, 'filled');
+                    legend({'coordinates', 'WM peak', 'SMC peak'});
+                    title([hemis{hh} ' ' ROI_name ' ' set_names{cc+1}]);
+                end
             end
 
             coord_diffs{counter,1} = hemis{hh};

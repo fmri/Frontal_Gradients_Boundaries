@@ -29,12 +29,12 @@ for hh = 1:N_hemis
 end
 
 %% Loop through hemispheres, ROIs and make patch then flatten it
+contrasts = {'vA_vP', 'vP_f'; 'aA_aP', 'aP_f'};
+cnames = {'visWMSMC', 'audWMSMC'};
 
 for nn = 1:N_fnames
-    contrasts = {'vA_vP', 'vP_f'; 'aA_aP', 'aP_f'};
-    cnames = {'visWMSMC', 'audWMSMC'};
     hemi = fnames{nn}(1:2);
-    
+
     for cc = 1:2
         contrast_set = contrasts(cc,:);
 
@@ -59,7 +59,7 @@ for nn = 1:N_fnames
         else
             continue;
         end
-    
+
         % Remove intermediate files created during patch converstion/flattening
         unix(['rm ' patch_outpath]);
         unix(['rm ./' fnames{nn} cnames{cc} '_thresh5_flat.patch.out'])
@@ -68,3 +68,34 @@ end
 
 
 
+%% Do the same for the supramodal versions
+contrasts = {'vP_f_aP_f', 'vA_vP_aA_aP'};
+for nn = 1:N_fnames
+    hemi = fnames{nn}(1:2);
+
+    % Combine labels
+    label_path1 = [ROI_dir hemi '_' fnames{nn}(4:end) contrasts{1} '_thresh5.label'];
+    label_path2 = [ROI_dir hemi '_' fnames{nn}(4:end) contrasts{2} '_thresh5.label'];
+    label_merged = [ROI_dir fnames{nn} 'WMSMC.label'];
+    if ~isfile(label_merged)
+        unix(['mri_mergelabels -i ' label_path1 ' -i ' label_path2 ' -o ' label_merged])
+    end
+
+    % convert label to patch
+    patch_outpath = [patch_tempdir fnames{nn} 'WMSMC_thresh5.patch'];
+    flatpatch_outpath = [ROI_dir fnames{nn} 'WMSMC_thresh5_flat.patch'];
+    if ~isfile(flatpatch_outpath)
+        unix(['label2patch -surf white fsaverage ' hemi ' ' label_merged ' ' patch_outpath]);
+    end
+
+    % convert patch to flattened patch
+    if ~isfile(flatpatch_outpath)
+        unix(['mris_flatten ' patch_outpath ' ' flatpatch_outpath]);
+    else
+        continue;
+    end
+
+    % Remove intermediate files created during patch converstion/flattening
+    unix(['rm ' patch_outpath]);
+    unix(['rm ./' fnames{nn} 'WMSMC_thresh5_flat.patch.out'])
+end
