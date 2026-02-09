@@ -9,9 +9,9 @@ addpath(genpath('/projectnb/somerslab/tom/functions/'));
 ccc;
 
 %% Initialize Key Variables
-ROIs = {'aINS', 'aIPS', 'aMFG', 'ant_temporal', 'cIPS', 'CO', 'DO', 'inf_aINS', 'iPCS', 'LOT', 'midIFS', 'midINS', ...
-    'ms_post_STSG', 'MT', 'parietal_opercular', 'pIPS', 'post_col_sulc', 'post_temporal', 'preSMA', 'sPCS',...
-    'sup_aINS', 'tgPCS', 'VO', 'VOT'};
+ROIs = {'aINS', 'aIPS', 'aMFG', 'ant_temporal', 'cIPS', 'DO', 'inf_lat_frontal', 'LOT', 'midIFS', 'midINS', ...
+    'ms_post_STSG', 'MT', 'parietal_opercular', 'pIPS', 'post_col_sulc', 'post_temporal', 'preSMA', 'sup_lat_frontal',...
+    'VO', 'VOT'};
 N_ROIs = length(ROIs);
 
 hemis = {'lh', 'rh'};
@@ -26,13 +26,13 @@ contrast_names = {'visual', 'auditory', 'supramodal'};
 N_vertices = 163842;
 vertex_inds = 1:N_vertices;
 
-pval_thresh = -log10(0.05); % pvals in freesurfer files are expressed as -log10(p)
+pval_thresh = -log10(0.01); % pvals in freesurfer files are expressed as -log10(p)
 ROI_vertices_thresh = 0.1; % percent of vertices in search space that must exist in final ROI
 ROI_subj_thresh = 0.5; % precent of subjs that must have the ROI for it to be used
 
 probROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/probabilistic_allROIs/';
 data_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
-ROI_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/subj_specific/';
+ROI_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/subj_specific_01/';
 
 % Load cortex labels for later use
 cortex_label_lh = readtable('/projectnb/somerslab/tom/fs_helpful_files/lh_cortex.label', 'FileType','text');
@@ -101,10 +101,12 @@ for ss = 1:N
                 assert(length(cortex_label_inds)==sum(cortex_label_mask), 'number of vertices in ROI mask does not match number of vertices in label');
                 label = table2array(cortex_labels{hh}(cortex_label_mask,:));
                 label_fname = [ROI_outdir hemi '.' ROI_name '_' contrast_names{3} '_' subjCode '.label'];
-                label_file = fopen(label_fname,'w');
-                fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label,1)) '\n']);
-                writematrix(label, label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
-                fclose(label_file);
+                if ~isfile(label_fname)
+                    label_file = fopen(label_fname,'w');
+                    fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label,1)) '\n']);
+                    writematrix(label, label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
+                    fclose(label_file);
+                end
             end
         end
     end

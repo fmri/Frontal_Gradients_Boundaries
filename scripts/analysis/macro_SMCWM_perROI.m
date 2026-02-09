@@ -10,9 +10,8 @@ addpath(genpath('/projectnb/somerslab/tom/functions/'));
 ccc;
 
 %% Initialize Key Variables
-ROIs = {'aINS', 'aIPS', 'aMFG', 'ant_temporal', 'cIPS', 'CO', 'DO', 'inf_aINS', 'iPCS', 'LOT', 'midIFS', 'midINS', ...
-        'ms_post_STSG', 'MT', 'parietal_opercular', 'pIPS', 'post_col_sulc', 'post_temporal', 'preSMA', 'sPCS',...
-        'sup_aINS', 'tgPCS', 'VO', 'VOT'};
+ROIs = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', 'midINS', 'ant_temporal', 'parietal_opercular', 'post_temporal', 'aIPS', ...
+    'ms_post_STSG', 'VOT', 'cIPS', 'MT', 'LOT', 'pIPS', 'VO', 'DO', 'post_col_sulc'};
 N_ROIs = length(ROIs);
 
 hemis = {'lh', 'rh'};
@@ -27,7 +26,7 @@ N_contrasts = length(contrasts);
 N_vertices = 163842;
 vertex_inds = 1:N_vertices;
 
-ROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/subj_specific/';
+ROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/subj_specific_01/';
 data_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
 
 
@@ -101,15 +100,110 @@ ylabel('PSC Ratio (WM/WM+SMC)');
 legend({'Visual', 'Auditory', 'Supramodal'});
 yline(0.2, '--r');
 
+%% Create LME table
+
+LME_table_full = table();
+for ss = 1:N
+    subjCode = subjCodes{ss};
+    for rr = 1:N_ROIs
+        ROI = ROIs{rr};
+        for hh = 1:2
+            hemi = hemis{hh};
+            for cc = 1:3
+                contrast = contrasts_simplified{cc};
+                PSC_ratio = PSC_ratios(ss,rr,hh,cc);
+                coord = coordinates_cut(ss,rr,hh,cc);
+                if ~isnan(coord) && ~isnan(PSC_ratio)
+                    LME_table_full = [LME_table_full; {PSC_ratio, coord, subjCode, ROI, hemi, contrast}];
+                end
+            end % contrasts
+        end % hemis
+    end % ROIs
+end %subjs
+
+LME_table_full.Properties.VariableNames = {'PSC_ratio', 'coord', 'subjCode', 'ROI', 'hemi', 'contrast'};
+LME_table_full.subjCode = categorical(LME_table_full.subjCode);
+LME_table_full.hemi = categorical(LME_table_full.hemi);
+
+
+%% Fit LMEs
+lmes = cell(3,1);
+betas = nan(3,1);
+CIs = nan(3,2);
+
+for cc = 1:3
+
+    LME_table = LME_table_full(strcmp(LME_table_full.contrast, contrasts_simplified{cc}),:);
+    LME_table.coord = (LME_table.coord - coord_means(cc))/coord_stds(cc); % normalize predictor for beta interpretability
+    lme = fitglme(LME_table, 'PSC_ratio ~ 1 + coord + (1 + coord | subjCode) + (1 + coord | hemi)')
+    lmes{cc} = lme;
+    
+    residuals = lme.residuals;
+    skew = skewness(residuals);
+    kurt = kurtosis(residuals);
+    disp([contrasts_simplified{cc} ' skewness: ' num2str(skew), '| kurtosis: ' num2str(kurt)]);
+    
+    figure; 
+    qqplot(residuals);
+    title(['QQ Plot ' contrasts_simplified{cc}]);
+
+    figure; 
+    fitted_values = predict(lme);
+    scatter(fitted_values, residuals);
+    title(['Heteroscedasticity Check: ' contrasts_simplified{cc}]);
+    xlabel('Fitted Values');
+    ylabel('Residuals');
+
+    % Breusch-Pagan test for heteroscedasticity
+    n  = height(lme.Variables);
+    df = lme.NumPredictors;    
+    x = lme.Variables(:,lme.PredictorNames);
+    aux = fitlm(x,residuals.^2);
+    T = aux.Rsquared.Ordinary*n;
+    P = 1-chi2cdf(abs(T),df)
+
+    % Calculate robust covariance (sandwich estimator)
+    X = lme.designMatrix;
+    meat = zeros(2,2);
+    for ss = 1:N % loop through subjs random effect
+        idx = ismember(LME_table.subjCode, subjCodes{ss});
+        Xg = X(idx,:);
+        rg = residuals(idx);
+        meat = meat + (Xg' * rg) * (Xg' * rg)';
+    end
+    
+    bread = inv(X' * X);
+    covB_robust = bread * meat * bread;
+    SEs_robust = sqrt(diag(covB_robust));
+    
+    % Wald test for significance
+    W = betas(2)/SEs_robust(2);
+    p = 1 - normcdf(W); % 1-tailed test because we have a directional hypothesis
+
+    % Confidence interval
+    betas(cc) = lme.Coefficients.Estimate(2);
+    CI(cc,:) = [betas(cc)-1.96*SEs_robust(2),betas(cc)+1.96*SEs_robust(2)];
+
+    % Beta represents the change in PSC ratio for a 1 SD increase in
+    % coordinate (this is a good way to express the effect size)
+
+end
+
+
 %% Plot posterior-anterior coord against PSC ratio
 coordinates_cut = coordinates(:,:,:,[1,3,5]);
-titles = {'visual', 'auditory', 'supramodal'};
+contrasts_simplified = {'visual', 'auditory', 'supramodal'};
 for cc = 1:3
     ratios = PSC_ratios(:,:,:,cc);
     coords = coordinates_cut(:,:,:,cc);
     figure;
     scatter(coords(:), ratios(:), 'filled');
-    title([ titles{cc} ' r=' num2str(round(corr(ratios(:), coords(:),'rows','complete'), 3)) ]);
+    lsline;
+    hold on;
+    scatter(mean(coords,[1,3], 'omitnan'), mean(ratios,[1,3], 'omitnan'), 50, 'r', 'filled');
+    title([ contrasts_simplified{cc} ' | B=' num2str(round(betas(cc), 3)) ' | CI: [' num2str(round(CI(cc,1),3)) '-' num2str(round(CI(cc,2),3)) ']']);
+    xlabel('Posterior->Anterior Coordinate');
+    ylabel('PSC Ratio');
+    legend({'individual', 'least squares line', 'mean per ROI'})
 end
 
-%%
