@@ -82,10 +82,12 @@ for ss = 1:N
                     assert(length(cortex_label_inds)==sum(cortex_label_mask), 'number of vertices in ROI mask does not match number of vertices in label');
                     label = table2array(cortex_labels{hh}(cortex_label_mask,:));
                     label_fname = [ROI_outdir hemi '.' ROI_name '_' contrast_names{cc} '_' subjCode '.label'];
-                    label_file = fopen(label_fname,'w');
-                    fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label,1)) '\n']);
-                    writematrix(label, label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
-                    fclose(label_file);
+                    if ~isfile(label_fname)
+                        label_file = fopen(label_fname,'w');
+                        fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label,1)) '\n']);
+                        writematrix(label, label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
+                        fclose(label_file);
+                    end
                 end
             end
 

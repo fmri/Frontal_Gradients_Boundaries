@@ -7,6 +7,15 @@
 %%% Tom Possidente - Septemeber 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%% NOTES %%%
+% This 2D method may misclassify jagged edged boundaries as gradients due
+% to ignoring one axis. To rectify this we could run these models in slices
+% across the Y axis, and average out which model fit is the best across all
+% slices. That way, if there is a jagged boundary, it will contriubte much
+% less to variability in change of z across x axis. 
+%
+%%% NOTES %%%
+
 addpath(genpath('/projectnb/somerslab/tom/functions/'));
 ccc;
 
@@ -24,32 +33,28 @@ N_subjs = length(subjCodes);
 
 % Set up directories
 subjdir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
-label_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/';
+label_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/probabilistic_allROIs/';
 group_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/grouplevel/';
 
 % Set models/methods used
-contrasts = {'f-aP', 'aA-aP'}; % which functional data contrasts to use
-keyword = 'aud'; % vis or aud
-ROI_name = 'preSMA'; % Which ROI to look at: sPCS, iPCS, midIFS, aINS, preSMA
+contrasts = {'f-vP', 'vA-vP'}; % which functional data contrasts to use
+keyword = 'vis'; % vis or aud
+ROI_name = 'inf_lat_frontal'; % Which ROI to look at: midIFS, aINS, preSMA, inf_lat_frontal, sup_lat_frontal, cIPS
 models = {'step', 'linear', 'hinge'};
 axis_method = 'average'; % regression (uses regression to find axis of largest difference) or average (uses weighted average of positive and negative pts to make line)
-axis_choice = 'step'; % step or individual %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+axis_choice = 'step'; % step (use step function axis for all models) or individual (use best axis for each model individually)
 
-plot_fits = false; % plot out individual subj fits
+plot_fits = true; % plot out individual subj fits
 
 %% Load probabilistic ROI (flat patch and labels) to use for all subjs
 % Label files used to map flat patch vertices back to RAS coordinates
-label_lh = readtable([label_dir hemis{1} '.' ROI_name '_probabilistic_' keyword 'WMSMC.label'], 'FileType','text');
-[~, ind] = unique(label_lh, 'rows');
-label_lh = label_lh(ind,:); % remove duplicated rows
-label_rh = readtable([label_dir hemis{2} '.' ROI_name '_probabilistic_' keyword 'WMSMC.label'], 'FileType','text');
-[~, ind] = unique(label_rh, 'rows');
-label_rh = label_rh(ind,:); % remove duplicated rows
+label_lh = readtable([label_dir hemis{1} '.' ROI_name '_prob_thresh5.label'], 'FileType','text');
+label_rh = readtable([label_dir hemis{2} '.' ROI_name '_prob_thresh5.label'], 'FileType','text');
 labels = {label_lh, label_rh};
 
 % Flat patch used in model fitting as x and y coords
-ROI_lh = read_patch([label_dir hemis{1} '.' ROI_name '_probabilistic_' keyword 'WMSMC_thresh5_flat.patch']);
-ROI_rh = read_patch([label_dir hemis{2} '.' ROI_name '_probabilistic_' keyword 'WMSMC_thresh5_flat.patch']);
+ROI_lh = read_patch([label_dir hemis{1} '.' ROI_name '_prob_thresh5_flat.patch']);
+ROI_rh = read_patch([label_dir hemis{2} '.' ROI_name '_prob_thresh5_flat.patch']);
 ROIs = {ROI_lh, ROI_rh};
 
 % Make sure all vertices in probabilistic patch and probabilistic label are the same (there can be small differences due to the way the patches are cut)
@@ -182,7 +187,6 @@ winning_rsquare = nan(N_subjs, num_hemis);
 linear_xdist = nan(N_subjs, num_hemis);
 BICs = nan(N_subjs, num_hemis, 3);
 hinge_direction = nan(N_subjs, num_hemis);
-step_direction = nan(N_subjs, num_hemis);
 
 % Parameters for how to rotate axis when fitting
 deg_step = 1; % degrees
@@ -250,13 +254,15 @@ for hh = 1:num_hemis
         end
 
         %% Fit step-wise funciton to data (boundary model)
-        [gof_step, info_step, winning_angle(ss,hh,1), xs_step, ~, step_results_best] = fit_model('step', xs, ys, Ts, group_data_curr, angles);
+        [gof_step, info_step, winning_angle(ss,hh,1), xs_step, ys_step, fit_res_step] = fit_GB_model('step', xs, ys, Ts, group_data_curr, angles);
 
-        step_direction(ss,hh) = step_results_best(find(min(xs_step)==xs_step)) < step_results_best(find(max(xs_step)==xs_step));
+        %step_direction(ss,hh) = step_results_best(find(min(xs_step)==xs_step)) < step_results_best(find(max(xs_step)==xs_step));
 
         if plot_fits
             subplot(2,2,2);
-            scatter(xs_step, Ts); hold on; scatter(xs_step, step_results_best);
+            scatter3(xs_step, ys_step, Ts); xlabel('x'); ylabel('y'); zlabel('t-stats'); hold on; %scatter(xs_step, step_results_best);
+            plot(fit_res_step)
+            view([0 0]);
             title(['step model | rotate ' num2str(winning_angle(ss,hh,1)) ' | rsqr: ' num2str(round(gof_step.rsquare,3))])
         end
 
@@ -269,7 +275,7 @@ for hh = 1:num_hemis
         end
 
         [gof_linear, info_linear, winning_angle(ss,hh,2), xs_linear, ys_linear, fit_res_linear] = ...
-            fit_model('linear', xs, ys, Ts, group_data_curr, angles_linear);
+            fit_GB_model('linear', xs, ys, Ts, group_data_curr, angles_linear);
 
         if plot_fits
             subplot(2,2,3);
@@ -288,7 +294,7 @@ for hh = 1:num_hemis
         end
 
         [gof_hinge, info_hinge, winning_angle(ss,hh,3), xs_hinge, ys_hinge, fit_res_hinge] = ...
-            fit_model('hinge', xs, ys, Ts, group_data_curr, angles_hinge);
+            fit_GB_model('hinge', xs, ys, Ts, group_data_curr, angles_hinge);
 
         hinge_direction(ss,hh) = fit_res_hinge.a < fit_res_hinge.b;
 
@@ -337,7 +343,7 @@ for hh = 1:num_hemis
             if dist2>0.5
                 disp('Poor vertex match');
                 keyboard;
-            end
+            end 
             vert2 = coord_inds(vert2_ind); % which vertex index is nearest to point at end of hinge?
             RAS_vert2 = labels{hh}{labels{hh}.Var1==vert2, 2:4}; % find RAS coordinates of that vertex
 
@@ -419,114 +425,7 @@ function LL= loglikelihood(num_obs, rmse, sse)
     LL = -0.5 * num_obs * log( 2*pi*(rmse^2) ) - (1/(2*(rmse^2))) * sse;
 end
 
-function [gof, info, winning_angle, xs_out, ys_out, model_out] = fit_model(type, xs, ys, Ts, group_data_current, angles)
 
-    best_rsquare = 0;
-    
-    if strcmp(type, 'step')
-        step_model = @(params, x) params(2)*(x < params(1)) + params(3)*(x >= params(1)); % param(1) is step location, 2 is pre-step, 3 is post-step
-    
-        for aa = 1:length(angles) % rotate x-axis iteratively and fit each time to find best fit
-            theta = deg2rad(angles(aa));
-            xs_new = xs * cos(theta) - ys * sin(theta); % only have to rotate x axis for step model fit (does not use y coords)
-            parameter_guesses = [mean(xs_new), mean(group_data_current(group_data_current<0)), mean(group_data_current(group_data_current<0))]; % estimates for step location, pre-step z value, and post-step z value
-            step_fit = lsqcurvefit(step_model, parameter_guesses, xs_new, Ts'); % fit model to data
-            step_results = step_model(step_fit, xs_new); % run fitted model
-            residuals_step = Ts' - step_results; % calculate residuals
-            sse = sum(residuals_step.^2);
-            rsqr = 1 - (sse / sum( (Ts'-mean(Ts)).^2 ) );
-            if best_rsquare<rsqr % best model has lowest r-square
-                best_rsquare = rsqr;
-                gof.rsquare = rsqr;
-                winning_angle = angles(aa); % record winning angle
-                gof.rmse = sqrt(mean(residuals_step.^2));
-                gof.sse = sse;
-                xs_out = xs_new; % record winning angle x coords
-                model_out = step_results; % record winning angle results for plotting
-            end
-        end
-        info.numobs = length(xs);
-        info.numparam = 3;
-        ys_out = []; % not needed for this model
-    
-        return
-    
-    elseif strcmp(type, 'linear')
-        model = fittype('x*a + b + y*0',... % linear function
-            'dependent', 'z',...
-            'independent', {'x','y'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
-            'coefficients', {'a','b'}); % a is slope, b is intercept
-    
-        for aa = 1:length(angles) % rotate x-axis iteratively and fit each time to find best fit
-            theta = deg2rad(angles(aa));
-            xs_new = xs * cos(theta) - ys * sin(theta); % get new rotated x and y coords
-            ys_new = xs * sin(theta) + ys * cos(theta);
-    
-            % Calculate initial guesses for gradient model parameters using group-level data
-            X = [xs_new; ones(1,length(xs_new))]';
-            coefs = X \ group_data_current'; % linear regression on only x coordinates
-            slope_guess = coefs(1); % 1st param is slope
-            intercept_guess = coefs(2); % 2nd is intercept
-            startpoint_guesses = [slope_guess, intercept_guess];
-    
-            [pre_fit_res, pre_gof, pre_info] = fit([xs_new', ys_new'], Ts, model, ...
-                'StartPoint', startpoint_guesses);
-    
-            if best_rsquare<pre_gof.rsquare
-                best_rsquare = pre_gof.rsquare;
-                winning_angle = angles(aa);
-                xs_out = xs_new;
-                ys_out = ys_new;
-                model_out = pre_fit_res;
-                gof = pre_gof;
-                info = pre_info;
-            end
-        end
-    
-    elseif strcmp(type, 'hinge')
-        model = fittype('a*(x < x1) + b*(x > x2) + ( a + ( (b-a)/(x2-x1)  * (x-x1) ) ) * ( (x > x1) & (x < x2) ) + y*0', ... % piecewise function, constant from -Inf to x1, linear from x1 to x2, constant from x2 to Inf. Must include y in the function even if it has no mathematical effect
-            'dependent', 'z',...
-            'independent', {'x','y'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
-            'coefficients', {'a','b','x1', 'x2'}); % a is z from -Inf to x1, b is z from x2 to Inf, x1 is where to start linear piece, x2 is where to end linear piece
-    
-        for aa = 1:length(angles) % rotate x-axis iteratively and fit each time to find best fit
-            theta = deg2rad(angles(aa));
-            xs_new = xs * cos(theta) - ys * sin(theta); % get new rotated x and y coords
-            ys_new = xs * sin(theta) + ys * cos(theta);
-    
-            % Calculate initial guesses for gradient model parameters using group-level data
-            startpoint_guesses = [mean(group_data_current(group_data_current<0)), mean(group_data_current(group_data_current>0)), prctile(xs_new, 25), prctile(xs_new, 75)]; % estimates for
-            lower_bounds = [-100, -100, min(xs_new), min(xs_new)];
-            upper_bounds = [100, 100, max(xs_new), max(xs_new)];
-    
-            [pre_fit_res, pre_gof, pre_info] = fit([xs_new', ys_new'], Ts, model, ...
-                'StartPoint', startpoint_guesses,...
-                'Lower', lower_bounds,...
-                'Upper', upper_bounds); % fit model
-    
-            if pre_fit_res.x2< pre_fit_res.x1 % Invalid fit, retry with bounds that force x1<x2
-                [pre_fit_res, pre_gof, pre_info] = fit([xs_new', ys_new'], Ts, model, ...
-                    'StartPoint', startpoint_guesses,...
-                    'Lower', [lower_bounds(1), lower_bounds(2), lower_bounds(3), pre_fit_res.x1],...
-                    'Upper', [upper_bounds(1), upper_bounds(2), pre_fit_res.x2, upper_bounds(3)]);
-                assert(pre_fit_res.x2>pre_fit_res.x1, 'invalid hinge fit');
-            end
-    
-            if best_rsquare<pre_gof.rsquare
-                best_rsquare = pre_gof.rsquare;
-                winning_angle = angles(aa);
-                xs_out = xs_new;
-                ys_out = ys_new;
-                model_out = pre_fit_res;
-                gof = pre_gof;
-                info = pre_info;
-            end
-        end
-    
-    else
-        error('model type not recognized')
-    end
-end
 
 
 %% Code Graveyard

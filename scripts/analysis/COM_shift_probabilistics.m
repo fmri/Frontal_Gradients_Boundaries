@@ -12,11 +12,12 @@ ccc;
 %% Initialize Key Variables
 perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
 ROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/probabilistic_allROIs/';
+unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
 
 hemis = {'lh', 'rh'};
 contrasts = {'WM', 'SMC'};
 permutation_names = {'group1', 'group2'};
-keyword = 'auditory';
+keyword = 'visual';
 
 % Establish which ROIs are included in the analysis (based on mean PSC ratio threshold and number of subjs with the ROI
 switch keyword
@@ -27,7 +28,7 @@ switch keyword
         ROI_names = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', ...
                      'parietal_opercular', 'aIPS', 'ms_post_STSG', 'cIPS'};
     case {'supramodal', 'supra'}
-        ROI_names = {'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', 'aIPS', 'cIPS'};
+        ROI_names = {'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', 'aIPS', 'cIPS', 'midIFS'};
 end
 
 
@@ -121,6 +122,8 @@ for hh = 1:N_hemis
         prob_data_path = [perm_dir hemi '_original_' contrast '_' keyword '.nii'];
         prob_data = MRIread(prob_data_path);
 
+        ROI_COM_label_data = nan(N_ROIs,5);
+
         for rr = 1:N_ROIs
             ROI_name = ROI_names{rr};
 
@@ -154,6 +157,16 @@ for hh = 1:N_hemis
             patch_inds = patch.ind(ind_mask);
             original_COMs(rr,cc,hh,:) = ROI_data * [x; y]' / sum(ROI_data);
 
+            % Find and record vertex index closest to COM point
+            if ~any(isnan(original_COMs(rr,cc,hh,:)))
+                [vert_dist, closest_ind] = min( sqrt( sum( ([x;y] - squeeze(original_COMs(rr,cc,hh,:))).^2 ) ) ); 
+                if vert_dist>0.999
+                    keyboard;
+                end
+                closest_label_ind = patch_inds(closest_ind);
+                ROI_COM_label_data(rr,:) = label{label.Var1==closest_label_ind,:};
+            end
+
             if plotting_diagnostics
                 if length(findobj('type','figure'))>100
                     disp('more than 100 plots already open, skipping plotting');
@@ -168,6 +181,13 @@ for hh = 1:N_hemis
             end
 
         end
+
+        % Create label with COM points for all ROIs
+        label_fname = [unpermuted_dir hemi '.' keyword '_' contrast '_COMs.label'];
+        label_file = fopen(label_fname,'w');
+        fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(ROI_COM_label_data,1)) '\n']);
+        writetable(array2table(ROI_COM_label_data), label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
+        fclose(label_file);
     end
 end
 
