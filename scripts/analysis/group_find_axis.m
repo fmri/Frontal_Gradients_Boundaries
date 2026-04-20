@@ -18,7 +18,7 @@ function [rotated_xs,rotated_ys] = group_find_axis(method, group_data_diff, xs, 
     switch method 
         case 'regression'
             % Linear regression to find 2D plane that best fits 3D data
-            X = [xs; ys; ones(1,length(xs))]';
+            X = [xs, ys, ones(length(xs),1)];
             coefs = X \ group_data_diff;
             coefs_norm = coefs(1:2) / norm(coefs(1:2)); % normalize coefficients
 

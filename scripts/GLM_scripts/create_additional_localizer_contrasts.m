@@ -22,8 +22,8 @@ N = length(subjCodes);
 fsaverage = true;
 
 data_dir = [projectDir 'data/unpacked_data_nii_fs_localizer/'];
-analysis_name_lh = 'localizer_contrasts_0sm_lh';
-analysis_name_rh = 'localizer_contrasts_0sm_rh';
+analysis_name_lh = 'localizer_contrasts_0sm_lh_audvis';
+analysis_name_rh = 'localizer_contrasts_0sm_rh_audvis';
 TR = 2;
 design_type = 'blocked';
 para_name = 'localizer_condition_timing.para';
@@ -105,79 +105,9 @@ if run_mkcontrast
     else
         
         unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'vA-aA -a 1 -c 3'])
+            'aAaPvAvP-f -a 1 -a 2 -a 3 -a 4 -c 7'])
         unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'vA-aA -a 1 -c 3'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'vP-aP -a 2 -c 4'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'vP-aP -a 2 -c 4'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'aAaP-f -a 3 -a 4 -c 7'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'aAaP-f -a 3 -a 4 -c 7'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'vAvP-f -a 1 -a 2 -c 7'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'vAvP-f -a 1 -a 2 -c 7'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'A-P -a 1 -a 3 -a 5 -c 2 -c 4 -c 6'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'A-P -a 1 -a 3 -a 5 -c 2 -c 4 -c 6'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'vA-vP -a 1 -c 2'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'vA-vP -a 1 -c 2'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'aA-aP -a 3 -c 4'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'aA-aP -a 3 -c 4'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'V-A -a 1 -a 2 -c 3 -c 4'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'V-A -a 1 -a 2 -c 3 -c 4'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'vP-f -a 2 -c 7'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'vP-f -a 2 -c 7'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'aP-f -a 4 -c 7'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'aP-f -a 4 -c 7'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'vA-f -a 1 -c 7'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'vA-f -a 1 -c 7'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'aA-f -a 3 -c 7'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'aA-f -a 3 -c 7'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'vAaA-vPaP -a 1 -a 3 -c 2 -c 4'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'vAaA-vPaP -a 1 -a 3 -c 2 -c 4'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'aPvP-f -a 4 -a 2 -c 7'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'aPvP-f -a 4 -a 2 -c 7'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh ' -contrast ' ...
-            'aAvA-f -a 3 -a 1 -a 6 -c 7'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh ' -contrast ' ...
-            'aAvA-f -a 3 -a 1 -a 2 -c 7'])
+            'aAaPvAvP-f -a 1 -a 2 -a 3 -a 4 -c 7'])
 
     end
 
@@ -267,59 +197,6 @@ parfor ss = 1:length(subjCodes)
     unix(['selxavg3-sess -s ' subjCode ' -d ' data_dir ' -analysis ' analysis_name_lh_nofix ...
         ' -no-preproc -overwrite'])
     unix(['selxavg3-sess -s ' subjCode ' -d ' data_dir ' -analysis ' analysis_name_rh_nofix ...
-        ' -no-preproc -overwrite'])
-
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% 3way localizer for MM
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-analysis_name_lh_3way = 'localizer_contrasts_0sm_3way_lh';
-analysis_name_rh_3way = 'localizer_contrasts_0sm_3way_rh';
-rlf_name = 'localizer_contrasts_runlistfile.txt';
-subjCodes = {'MM'};
-
-nconditions = 5;
-run_mkanalysis = true;
-run_mkcontrast = true;
-
-% localizer condition orders (3way)
-% 1 = aA
-% 2 = tA
-% 3 = vA
-% 4 = f
-% 5 = p
-
-if run_mkanalysis
-    unix(['mkanalysis-sess -a ' analysis_name_lh_3way ' -funcstem ' funcstem_lh ...
-        ' -surface fsaverage lh -fsd 3WayLocalizer -event-related -paradigm ' para_name ...
-        ' -nconditions ' nconditions ' -refeventdur 32 -TR ' num2str(TR) ...
-        ' -polyfit 1 -spmhrf 0 -mcextreg -runlistfile ' rlf_name ' -per-run -force'])
-
-    unix(['mkanalysis-sess -a ' analysis_name_rh_3way ' -funcstem ' funcstem_rh ...
-        ' -surface fsaverage rh -fsd 3WayLocalizer -event-related -paradigm ' para_name ...
-        ' -nconditions ' nconditions ' -refeventdur 32 -TR ' num2str(TR) ...
-        ' -polyfit 1 -spmhrf 0 -mcextreg -runlistfile ' rlf_name ' -per-run -force'])
-end
-
-
-if run_mkcontrast
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh_3way ' -contrast ' ...
-            'vAaA-p -a 1 -a 3 -c 5'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh_3way ' -contrast ' ...
-            'vAaA-p -a 1 -a 3 -c 5'])
-
-end
-
-for ss = 1:length(subjCodes)
-
-    subjCode = subjCodes{ss};
-
-    % run glm
-    unix(['selxavg3-sess -s ' subjCode ' -d ' data_dir ' -analysis ' analysis_name_lh_3way ...
-        ' -no-preproc -overwrite'])
-    unix(['selxavg3-sess -s ' subjCode ' -d ' data_dir ' -analysis ' analysis_name_rh_3way ...
         ' -no-preproc -overwrite'])
 
 end

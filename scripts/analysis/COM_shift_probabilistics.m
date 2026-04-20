@@ -10,27 +10,36 @@ addpath(genpath('/projectnb/somerslab/tom/functions/'));
 ccc;
 
 %% Initialize Key Variables
-perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
 ROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/probabilistic_allROIs/';
-unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
 
 hemis = {'lh', 'rh'};
-contrasts = {'WM', 'SMC'};
+contrasts = {'vis', 'aud'};
 permutation_names = {'group1', 'group2'};
-keyword = 'visual';
+keyword = 'visaud';
 
-% Establish which ROIs are included in the analysis (based on mean PSC ratio threshold and number of subjs with the ROI
+% Establish which ROIs are included in the analysis (based on mean PSC ratio threshold and number of subjs with the ROI)
 switch keyword
     case {'visual', 'vis'}
         ROI_names = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', ...
                      'aIPS', 'VOT', 'cIPS', 'LOT', 'pIPS', 'VO', 'DO'};
+        perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
+        unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
     case {'auditory', 'aud'}
         ROI_names = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', ...
                      'parietal_opercular', 'aIPS', 'ms_post_STSG', 'cIPS'};
+        perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
+        unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
     case {'supramodal', 'supra'}
         ROI_names = {'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', 'aIPS', 'cIPS', 'midIFS'};
+        perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
+        unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
+    case {'VisAud', 'visaud'}
+        ROI_names = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal',...
+                     'midINS', 'parietal_opercular', 'aIPS', 'ms_post_STSG', 'VOT', 'cIPS', 'MT',...
+                     'LOT', 'DO'};
+        perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_VisAud/';
+        unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/VisAud_nonpermuted_probabilistics/';
 end
-
 
 N_iterations = 10000;
 N_hemis = length(hemis);
@@ -89,16 +98,16 @@ for cc = 1:N_contrasts
                 COMs(rr,cc,hh,ii,:) = ROI_data * [x; y]' / sum(ROI_data);
 
                 if plotting_diagnostics
-                    % if length(findobj('type','figure'))>50
-                    %     disp('more than 50 plots already open, skipping plotting');
-                    %     continue;
-                    % end
-                    % 
-                    % figure;
-                    % scatter(x,y,[],ROI_data, 'filled'); hold on;
-                    % scatter(COMs(rr,cc,hh,ii,1), COMs(rr,cc,hh,ii,2), 100, 'r', 'filled');
-                    % %scatter(x(closest_ind), y(closest_ind), 100, 'o', 'filled');
-                    % title([hemi ' ' ROI_name ' ' group ' iter' num2str(ii)])
+                    if length(findobj('type','figure'))>50
+                        disp('more than 50 plots already open, skipping plotting');
+                        continue;
+                    end
+    
+                    figure;
+                    scatter(x,y,[],ROI_data, 'filled'); hold on;
+                    scatter(COMs(rr,cc,hh,ii,1), COMs(rr,cc,hh,ii,2), 100, 'r', 'filled');
+                    %scatter(x(closest_ind), y(closest_ind), 100, 'o', 'filled');
+                    title([hemi ' ' ROI_name ' ' group ' iter' num2str(ii)])
                 end
 
             end
@@ -119,7 +128,7 @@ for hh = 1:N_hemis
         contrast = contrasts{cc};
 
         % Load probabilistic data for full hemisphere
-        prob_data_path = [perm_dir hemi '_original_' contrast '_' keyword '.nii'];
+        prob_data_path = [unpermuted_dir hemi '_original_' contrast '_' keyword '.nii'];
         prob_data = MRIread(prob_data_path);
 
         ROI_COM_label_data = nan(N_ROIs,5);
@@ -279,6 +288,7 @@ save([keyword '_permtest_results.mat'], 'results_table')
 
 %% FDR testing
 
+% WM testing 
 load('/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_analysis_results/auditory_permtest_results.mat','results_table');
 results_auditory = results_table;
 load('/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_analysis_results/visual_permtest_results.mat','results_table');
@@ -289,3 +299,9 @@ results_supramodal = results_table;
 results_table_all = [results_auditory; results_visual; results_supramodal];
 [c_p,c_a,h] = fdr_BH(results_table_all.perm_pval, .05);
 results_table_all.FDR_rejectnull = h;
+
+% Vis Aud testing
+load('/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_analysis_results/visaud_permtest_results.mat','results_table');
+
+[c_p,c_a,h] = fdr_BH(results_table.perm_pval, .05);
+results_table.FDR_rejectnull = h;

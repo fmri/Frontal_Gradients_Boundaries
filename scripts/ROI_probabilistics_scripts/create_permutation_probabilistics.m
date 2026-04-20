@@ -15,9 +15,9 @@ tic;
 %% Initialize Key Variables
 
 iterations = 10000; 
-contrasts = {'vA-vP', 'aA-aP'; 'f-vP', 'f-aP'};
-keyword= 'supramodal'; % used for naming nii files (auditory or visual)
-contrast_labels = {'WM', 'SMC'};
+contrasts = {'aAaP-f', 'vAvP-f'};
+keyword= 'visaud'; % used for naming nii files (auditory, visual, supramodal, visaud)
+contrast_labels = {'aud', 'vis'};
 N_contrasts = length(contrasts);
 
 subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI'};
@@ -31,10 +31,11 @@ pval_thresh = -log10(0.05); % pvals in freesurfer files are expressed as -log10(
 permutations = rand(N, iterations)>0.5; % swap or not for each subj in each iteration (50% chance)
 
 data_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
-permuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
+permuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_VisAud/';
+unpermuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/VisAud_nonpermuted_probabilistics/';
 
 %% Create alternative contrast names if needed
- flip = zeros(N_contrasts);
+flip = zeros(N_contrasts);
 for cc = 1:N_contrasts
     contrast = contrasts{cc};
     if length(contrasts{cc})==4 & strcmp(contrast(end-2:end), 'P-f')
@@ -134,13 +135,13 @@ WM_probmap = sum(WM_data, 3);
 SMC_probmap = sum(SMC_data, 3);
 
 data.vol = WM_probmap(:,1)'; % reusing "data" structure and overwriting vol data so that all the other fields are prefilled and correct
-MRIwrite(data, [permuted_maps_outdir, 'lh_original_WM_' keyword '.nii']);
+MRIwrite(data, [unpermuted_maps_outdir, 'lh_original_aud_' keyword '.nii']);
 data.vol = SMC_probmap(:,1)';
-MRIwrite(data, [permuted_maps_outdir, 'lh_original_SMC_' keyword '.nii']);
+MRIwrite(data, [unpermuted_maps_outdir, 'lh_original_vis_' keyword '.nii']);
 
 data.vol = WM_probmap(:,2)'; % reusing "data" structure and overwriting vol data so that all the other fields are prefilled and correct
-MRIwrite(data, [permuted_maps_outdir, 'rh_original_WM_' keyword '.nii']);
+MRIwrite(data, [unpermuted_maps_outdir, 'rh_original_aud_' keyword '.nii']);
 data.vol = SMC_probmap(:,2)';
-MRIwrite(data, [permuted_maps_outdir, 'rh_original_SMC_' keyword '.nii']);
+MRIwrite(data, [unpermuted_maps_outdir, 'rh_original_vis_' keyword '.nii']);
 
 

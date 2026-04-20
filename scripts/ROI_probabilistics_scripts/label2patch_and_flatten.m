@@ -12,8 +12,9 @@ ccc;
 ROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/probabilistic_allROIs/';
 patch_tempdir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/recons/fsaverage/surf/';
 hemis = {'lh', 'rh'};
-ROI_names = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', ...
-             'parietal_opercular', 'aIPS', 'ms_post_STSG', 'VOT', 'cIPS', 'LOT', 'pIPS', 'VO', 'DO'};
+% ROI_names = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', ...
+%              'parietal_opercular', 'aIPS', 'ms_post_STSG', 'VOT', 'cIPS', 'LOT', 'pIPS', 'VO', 'DO'};
+ROI_names = {'MT'};
 
 N_hemis = length(hemis);
 N_ROIs = length(ROI_names);
@@ -30,7 +31,7 @@ end
 
 %% Loop through hemispheres, ROIs and make patch then flatten it
 
-parfor nn = 1:N_fnames
+for nn = 1:N_fnames
     hemi = fnames{nn}(1:2);
 
     % convert label to patch
