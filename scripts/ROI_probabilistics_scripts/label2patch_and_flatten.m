@@ -14,7 +14,9 @@ patch_tempdir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/reco
 hemis = {'lh', 'rh'};
 % ROI_names = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', ...
 %              'parietal_opercular', 'aIPS', 'ms_post_STSG', 'VOT', 'cIPS', 'LOT', 'pIPS', 'VO', 'DO'};
-ROI_names = {'MT'};
+ROI_names = {'visaud_sPCS_tgPCS_interface', 'visaud_tgPCS_iPCS_interface',...
+             'visaud_iPCS_CO_interface', 'visaud_iPCS_cIFSG_interface',...
+             'visaud_cIFSG_midIFS_interface'};
 
 N_hemis = length(hemis);
 N_ROIs = length(ROI_names);
@@ -31,7 +33,7 @@ end
 
 %% Loop through hemispheres, ROIs and make patch then flatten it
 
-for nn = 1:N_fnames
+parfor nn = 1:N_fnames
     hemi = fnames{nn}(1:2);
 
     % convert label to patch

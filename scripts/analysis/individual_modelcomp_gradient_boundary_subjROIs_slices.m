@@ -6,14 +6,6 @@
 %%% Tom Possidente - Septemeber 2025
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%% NOTES %%%
-% This 2D method may misclassify jagged edged boundaries as gradients due
-% to ignoring one axis. To rectify this we could run these models in slices
-% across the Y axis, and average out which model fit is the best across all
-% slices. That way, if there is a jagged boundary, it will contriubte much
-% less to variability in change of z across x axis. 
-%%% NOTES %%%
-
 addpath(genpath('/projectnb/somerslab/tom/functions/'));
 ccc;
 
@@ -41,7 +33,7 @@ models = {'step', 'linear', 'hinge'};
 axis_method = 'average'; % regression (uses regression to find axis of largest difference) or average (uses weighted average of positive and negative pts to make line)
 axis_choice = 'step'; % step (use step function axis for all models) or individual (use best axis for each model individually)
 
-plot_fits = false; % plot out individual subj fits (debugging only unless you want a ~100 plots)
+plot_fits = true; % plot out individual subj fits (debugging only unless you want a ~100 plots)
 
 dist_thresh = 4.4; % length in mm of 2 voxels
 
@@ -59,7 +51,7 @@ for hh = 1:num_hemis
     % Get group contrast data
     for cc = 1:length(contrasts)
         if strcmp(contrasts{cc}(3:4), '-f') % the fixation contrast got coded backwards here so the data files are all 'f-something' instead of 'something-f'
-            new_contrast_str = ['f-' contrasts{cc}(1:2)]; % flip the string around 
+            new_contrast_str = ['f-' contrasts{cc}(1:2)]; % flip the string around
             group_data_curr = MRIread([group_dir hemis{hh} '.ces.localizer_groupavg_' new_contrast_str '.glmres/osgm/z.mgh']);
             group_data_curr.vol = -group_data_curr.vol; % flip data to get back to 'something-fixation'
         else
@@ -87,26 +79,27 @@ model_comp = nan(N_subjs, num_hemis); % BIC difference values between winner and
 winning_rsquare = nan(N_subjs, num_hemis); % r-square of winning model
 linear_xdist = nan(N_subjs, num_hemis); % distance of hinge in hinge model (mm)
 BICs = nan(N_subjs, num_hemis, 3); % Raw BICs for each model
-change_direction = nan(N_subjs, num_hemis); % 1 for expected direction (increase along X axis), else 0
+change_direction = nan(N_subjs, num_hemis, 3); % 1 for expected direction (increase along X axis), else 0
 
 % Parameters for how to rotate axis when fitting
 deg_step = 1; % degrees
-deg_tolerance = 45; % searching +/- 45 degrees off of group axis of greatest change
+deg_tolerance = 60; % searching +/- 45 degrees off of group axis of greatest change
 angles = 0-deg_tolerance:deg_step:0+deg_tolerance;
-winning_angle = nan(N_subjs, num_hemis, 3); % which angle was optimal
+winning_angles = nan(N_subjs, num_hemis); % which angle was optimal
 
+tic;
 for hh = 1:num_hemis
     hemi = hemis{hh};
 
     for ss = 1:N_subjs
         subjCode = subjCodes{ss};
-        
+
         % Get subj ROI
         subjROI_path = [subj_ROIs hemi '.' ROI_name '_' modailty '_' subjCode '.label'];
         if ~isfile(subjROI_path) % if this ROI doesn't exist, the subj didn't have enough good signal/vertices in this ROI, skip it
             continue;
         end
-        
+
         subjROI = readtable(subjROI_path, 'FileType','text'); % load label file for individual subj ROI
         patch_inds_mask = ismember(ROIs{hh}.ind, subjROI{:,1}); % Get flat patch indices/x/y for each vertex in subj ROI
         patch_inds = ROIs{hh}.ind(patch_inds_mask);
@@ -125,25 +118,9 @@ for hh = 1:num_hemis
         % Get difference between contrasts in ROI
         ROI_t_diffs = ROI_Ts{ss,2,hh}  - ROI_Ts{ss,1,hh};
 
-        if plot_fits % plot T-stat contrasts in patch before fixing outliers
-            f1 = figure; subplot(3,1,1);
-            scatter(subjROI_x, subjROI_y, [], ROI_t_diffs,'filled');
-            clim_set = max(abs(prctile(ROI_t_diffs, [10,90])));
-            xlabel('x'); ylabel('y'); cb = colorbar; colormap(redbluedark); clim([-clim_set, clim_set]); ylabel(cb, 'T-stat', 'rotation', 270);
-            xlim([min(ROIs{hh}.x),max(ROIs{hh}.x)]); ylim([min(ROIs{hh}.y),max(ROIs{hh}.y)]);
-        end
-
         % Replace outliers with 3 stds away from median value (clipping)
         ROI_t_diffs = filloutliers(ROI_t_diffs, 'clip', 'median'); % 3 stds from median is outlier
 
-        if plot_fits % plot T-stat contrasts in patch after fixing outliers
-            subplot(3,1,2);
-            scatter(subjROI_x, subjROI_y, [], ROI_t_diffs,'filled');
-            clim_set = max(abs(prctile(ROI_t_diffs, [10,90])));
-            xlabel('x'); ylabel('y'); cb = colorbar; colormap(redbluedark); clim([-clim_set, clim_set]); ylabel(cb, 'T-stat', 'rotation', 270);
-            xlim([min(ROIs{hh}.x),max(ROIs{hh}.x)]); ylim([min(ROIs{hh}.y),max(ROIs{hh}.y)]);
-        end
-        
         % Rename for clarity/ease
         xs = subjROI_x;
         ys = subjROI_y;
@@ -152,77 +129,81 @@ for hh = 1:num_hemis
 
         % Start plot
         if plot_fits % plot x-coords and T vals
-            f2 = figure;
+            f1 = figure;
             subplot(2,2,1);
-            scatter(xs, Ts);
+            scatter(xs, ys, [], Ts, 'filled');
+            clim_set = max(abs(prctile(Ts, [10,90])));
+            xlabel('x'); ylabel('y'); cb = colorbar; colormap(redbluedark); clim([-clim_set, clim_set]); ylabel(cb, 'T-stat', 'rotation', 270);
+            xlim([min(xs),max(xs)]); ylim([min(ys),max(ys)]);
             title('original');
         end
 
         %% Fit step-wise function to data (boundary model)
 
-        [gof_step, info_step, winning_angle(ss,hh,1), xs_step, ys_step, fit_res_step] = fit_GB_model('step', xs, ys, Ts, group_data_curr, angles);
+        winning_angle = individual_find_axis_noslice('step', xs, ys, Ts, group_data_curr, angles);
+        winning_angles(ss,hh) = winning_angle; 
+        [metrics_step, ~, ~, xs_new, ys_new, ~, bins_step] = fit_GB_model_slices('step', xs, ys, Ts, group_data_curr, winning_angle);
 
         if plot_fits % plot step model fit
-            subplot(2,2,2);
-            scatter(xs_step, Ts); xlabel('x'); ylabel('t-stats'); hold on; %scatter(xs_step, step_results_best);
-            plot(fit_res_step)
-            title(['step model | rotate ' num2str(winning_angle(ss,hh,1)) ' | rsqr: ' num2str(round(gof_step.rsquare,3))])
-        end
-
-        % Plot with rotated axes
-        if plot_fits
             figure(f1);
-            subplot(3,1,3);
-            scatter(xs_step, ys_step, [], Ts, 'filled');
+            subplot(2,2,2);
+            scatter(xs_new, ys_new, [], Ts, 'filled');
             clim_set = max(abs(prctile(Ts, [10,90])));
             xlabel('x'); ylabel('y'); cb = colorbar; colormap(redbluedark); clim([-clim_set, clim_set]); ylabel(cb, 'T-stat', 'rotation', 270);
-            xlim([min(xs_step),max(xs_step)]); ylim([min(ys_step),max(ys_step)]);
+            xlim([min(xs_new),max(xs_new)]); ylim([min(ys_new),max(ys_new)]);
+            hold on;
+            for bb = 1:length(bins_step)-1
+                midbin = (bins_step(bb+1) + bins_step(bb)) / 2;
+                yline(midbin, ':');
+                scatter(metrics_step.p1(bb), midbin, 100, 'g', '^', 'filled')
+            end
+            title(['step: rotate= ' num2str(winning_angle) ', rsqr=' num2str(round(mean(metrics_step.rsquare, 'omitnan', "Weights", metrics_step.numobs),2))])
         end
 
         %% Fit 2D plane to data (linear gradient model)
-        if strcmp(axis_choice, 'step') % use step model axis 
-            angles_linear = winning_angle(ss,hh,1);
-        else % find best axis for linear fit
-            angles_linear = angles;
-        end
+        [metrics_linear, ~, ~, xs_new, ys_new, ~] = fit_GB_model_slices('linear', xs, ys, Ts, group_data_curr, winning_angle);
 
-        [gof_linear, info_linear, winning_angle(ss,hh,2), xs_linear, ys_linear, fit_res_linear] = ...
-            fit_GB_model('linear', xs, ys, Ts, group_data_curr, angles_linear);
-
-        if plot_fits % plot fit for linear model
-            figure(f2);
+        if plot_fits % plot
+            figure(f1);
             subplot(2,2,3);
-            scatter(xs_linear, Ts); xlabel('x'); ylabel('t-stats'); hold on; %
-            plot(fit_res_linear);
-            title(['linear model | rotate ' num2str(winning_angle(ss,hh,2)) ' | rsqr: ' num2str(round(gof_linear.rsquare,3))])
+            scatter(xs_new, ys_new, [], Ts, 'filled');
+            clim_set = max(abs(prctile(Ts, [10,90])));
+            xlabel('x'); ylabel('y'); cb = colorbar; colormap(redbluedark); clim([-clim_set, clim_set]); ylabel(cb, 'T-stat', 'rotation', 270);
+            xlim([min(xs_new),max(xs_new)]); ylim([min(ys_new),max(ys_new)]);
+            title(['linear: rsqr=' num2str(round(mean(metrics_linear.rsquare, 'omitnan', "Weights", metrics_step.numobs),2))])        
         end
 
         %% Fit 2D plane to subsection of data (hinge function gradient model)
-        if strcmp(axis_choice, 'step') % use step model axis
-            angles_hinge = winning_angle(ss,hh,1);
-        else % find best axis for hinge fit
-            angles_hinge = angles;
-        end
+        [metrics_hinge, ~, ~, xs_new, ys_new, ~] = fit_GB_model_slices('hinge', xs, ys, Ts, group_data_curr, winning_angle);
 
-        [gof_hinge, info_hinge, winning_angle(ss,hh,3), xs_hinge, ys_hinge, fit_res_hinge] = ...
-            fit_GB_model('hinge', xs, ys, Ts, group_data_curr, angles_hinge);
-
-        change_direction(ss,hh) = fit_res_hinge.a < fit_res_hinge.b; % see if hinge direction is increase or decrease
-
-        if plot_fits % plot hinge model fit
+        if plot_fits % plot
+            figure(f1);
             subplot(2,2,4);
-            scatter(xs_hinge, Ts); xlabel('x'); ylabel('T-stats'); hold on; %
-            plot(fit_res_hinge);
-            title(['linear hinge | rotate ' num2str(winning_angle(ss,hh,3)) ' | rsqr: ' num2str(round(gof_hinge.rsquare,3))])
+            scatter(xs_new, ys_new, [], Ts, 'filled');
+            clim_set = max(abs(prctile(Ts, [10,90])));
+            xlabel('x'); ylabel('y'); cb = colorbar; colormap(redbluedark); clim([-clim_set, clim_set]); ylabel(cb, 'T-stat', 'rotation', 270);
+            xlim([min(xs_new),max(xs_new)]); ylim([min(ys_new),max(ys_new)]);
+            hold on;
+            for bb = 1:length(bins_step)-1
+                midbin = (bins_step(bb+1) + bins_step(bb)) / 2;
+                yline(midbin, ':');
+                scatter(metrics_hinge.p1(bb), midbin, 100, 'g', '^', 'filled')
+                scatter(metrics_hinge.p1(bb)+metrics_hinge.p2(bb), midbin, 100, 'g', '>', 'filled')
+            end
+            title(['hinge: rsqr=' num2str(round(mean(metrics_hinge.rsquare, 'omitnan', "Weights", metrics_step.numobs),2))])        
         end
+        %% Take weighted means of metrics
+        step_means = mean(metrics_step, 'omitnan', 'Weights', metrics_step.numobs);
+        linear_means = mean(metrics_linear,'omitnan', 'Weights', metrics_step.numobs);
+        hinge_means = mean(metrics_hinge, 'omitnan', 'Weights', metrics_step.numobs);
 
         %% Calculate log likelihood of each model
-        LL_step = loglikelihood(info_step.numobs, gof_step.rmse, gof_step.sse);
-        LL_linear = loglikelihood(info_linear.numobs, gof_linear.rmse, gof_linear.sse);
-        LL_hinge = loglikelihood(info_hinge.numobs, gof_hinge.rmse, gof_hinge.sse);
+        LL_step = loglikelihood(step_means.numobs, step_means.rmse, step_means.sse);
+        LL_linear = loglikelihood(linear_means.numobs, linear_means.rmse, linear_means.sse);
+        LL_hinge = loglikelihood(hinge_means.numobs, hinge_means.rmse, hinge_means.sse);
 
         % Compare BIC between models
-        [~, bic] = aicbic([LL_step; LL_linear; LL_hinge], [info_step.numparam; info_linear.numparam; info_hinge.numparam]);
+        [~, bic] = aicbic([LL_step; LL_linear; LL_hinge], [3; 2; 4]);
         [~,ind] = min(bic); % get ind of min BIC model
         disp([models{ind}]) % print winning model name
         winning_model(ss,hh) = ind;
@@ -230,30 +211,40 @@ for hh = 1:num_hemis
         BICs(ss,hh,:) = bic; % record all BICs
 
         % Check if the winning model actually fit the data well
-        gofs = {gof_step, gof_linear, gof_hinge};
-        disp(['winning model r^2: ' num2str(round(gofs{ind}.rsquare,3))]);
-        winning_rsquare(ss,hh) = gofs{ind}.rsquare;
+        rsquares = [step_means.rsquare, linear_means.rsquare, hinge_means.rsquare];
+        disp(['winning model r^2: ' num2str(round(rsquares(ind),3))]);
+        winning_rsquare(ss,hh) = rsquares(ind);
 
         % If hinge model is the winner, check whether the linear piece is large enough to cross multiple voxels
         if ind==3
-            %linear_xdist(ss,hh) = fit_res_hinge.x2 - fit_res_hinge.x1; % just take difference between end of hinge and beginning of hinge on x axis 
-            linear_xdist(ss,hh) = (fit_res_hinge.x2+fit_res_hinge.x1) - fit_res_hinge.x1; % just take difference between end of hinge and beginning of hinge on x axis \
+            linear_xdist(ss,hh) = mean((metrics_hinge.p2 + metrics_hinge.p1) - metrics_hinge.p1, 'omitnan', 'Weights', metrics_hinge.numobs); % just take difference between end of hinge and beginning of hinge on x axis
         end
 
         if plot_fits % make overall title for 2x2 fit plot
             sgtitle([subjCode ' ' hemi ' | Winner:' num2str(winning_model(ss,hh)) ' | BIC Diff:' num2str(round(model_comp(ss,hh),2)) ' | r^2:' num2str(round(winning_rsquare(ss,hh),3)) ' | hingedist: ' num2str(round(linear_xdist(ss,hh),2))])
         end
 
+        %% Check direction of change for each model
+        change_direction(ss,hh,1) = mode(metrics_step.p2 < metrics_step.p3);
+        change_direction(ss,hh,2) = mode(metrics_linear.p1 > 0);
+        change_direction(ss,hh,3) = mode(metrics_hinge.p3 < metrics_hinge.p4);
     end
+end
+toc
+
+% Check the change direction of each winning model
+good_winning_direction = zeros(N_subjs,num_hemis);
+for mm = 1:3
+    good_winning_direction = good_winning_direction + ((winning_model==mm) .* change_direction(:,:,mm));
 end
 
 %% Basic counts to compare models
 % Something is off here, these should all add up to total
-total_gradient_win = sum(winning_model==3 & winning_rsquare>0.1 & model_comp<-10 & linear_xdist>dist_thresh & change_direction==1) % put them all together
-total_boundary_win = sum(( (winning_model==1 & model_comp<-10) | (winning_model==3 & linear_xdist<=dist_thresh) ) & winning_rsquare>0.1 & change_direction==1) % put them all together
-total_linear_win = sum(winning_model==2 & winning_rsquare>0.1 & model_comp<-10 & change_direction==1) % put them all together
-weak_evidence = sum( (~(winning_model==3 & linear_xdist<=dist_thresh) & model_comp>=-10) & winning_rsquare>0.1 & change_direction==1) 
-bad_direction = sum(change_direction==0 & winning_rsquare>0.1)
+total_gradient_win = sum(winning_model==3 & winning_rsquare>0.1 & model_comp<-10 & linear_xdist>dist_thresh & change_direction(:,:,1)==1) % put them all together
+total_boundary_win = sum(( (winning_model==1 & model_comp<-10) | (winning_model==3 & linear_xdist<=dist_thresh) ) & winning_rsquare>0.1 & change_direction(:,:,3)==1) % put them all together
+total_linear_win = sum(winning_model==2 & winning_rsquare>0.1 & model_comp<-10 & change_direction(:,:,2)==1) % put them all together
+weak_evidence = sum( (~(winning_model==3 & linear_xdist<=dist_thresh) & model_comp>=-10) & winning_rsquare>0.1 & good_winning_direction==1)
+bad_direction = sum(good_winning_direction==0 & winning_rsquare>0.1)
 r2_rejects = sum(winning_rsquare<=0.1)
 
 total = 36 - sum(isnan(winning_model), 'all')
@@ -261,19 +252,19 @@ total_check = sum([total_gradient_win,total_boundary_win,total_linear_win,weak_e
 
 %% Group plots/tests
 BIC_allhemis = reshape(BICs, [size(BICs,1)*size(BICs,2), size(BICs,3)]); % collapse hemispheres
-hingedir_allhemis = reshape(change_direction, [size(change_direction,1)*size(change_direction,2),1]); % collapse hemispheres
+hingedir_allhemis = reshape(change_direction(:,:,3), [size(change_direction,1)*size(change_direction,2),1]); % collapse hemispheres
 winning_model_allhemis = reshape(winning_model, [size(winning_model,1)*size(winning_model,2),1]); % collapse hemispheres
 
 % plot angles
 figure;
-histogram(winning_angle(:), 'NumBins',20);
+histogram(winning_angles(:), 'NumBins',20);
 
 % Plot BIC differences
 new_N = (N_subjs*2) - sum(hingedir_allhemis==0 | isnan(hingedir_allhemis)); % calculate number of subjs/hemis with hinge in correct direction
 BIC_diffs = BIC_allhemis(hingedir_allhemis==1,1)-BIC_allhemis(hingedir_allhemis==1,3); % when hinge was in correct direction, what was the BIC difference bt hinge and step?
 m = mean(BIC_diffs);
-SE = std(BIC_diffs)/sqrt(new_N); 
-figure; 
+SE = std(BIC_diffs)/sqrt(new_N);
+figure;
 subplot(1,3,1);
 swarmchart(ones(new_N,1), BIC_diffs, [], 'k', 'filled'); hold on;
 errorbar(1, m, SE, 'Color', 'r','Marker', '.', 'MarkerSize', 30, 'CapSize',15, 'LineWidth',3);
@@ -283,7 +274,7 @@ xlim([-2,4]); xticks([]);
 title({['Step vs Hinge Model | \mu=' num2str(round(m,2))]})
 
 % Plot hinge distances
-xdists_hingewinners = linear_xdist(winning_model==3 & change_direction==1);
+xdists_hingewinners = linear_xdist(winning_model==3 & change_direction(:,:,3)==1);
 m = mean(xdists_hingewinners);
 SE = std(xdists_hingewinners)/sqrt(length(xdists_hingewinners));
 subplot(1,3,2);
@@ -295,7 +286,7 @@ ylabel('Hinge Length Across Cortex (mm)');
 title({['Hinge Length | \mu=' num2str(round(mean(xdists_hingewinners),2))]})
 
 % Plot hinge R squareds
-rsqr_hingewinners = winning_rsquare(winning_model==3 & change_direction==1);
+rsqr_hingewinners = winning_rsquare(winning_model==3 & change_direction(:,:,3)==1);
 m = mean(rsqr_hingewinners);
 SE = std(rsqr_hingewinners/sqrt(length(rsqr_hingewinners)));
 subplot(1,3,3);
@@ -310,5 +301,5 @@ sgtitle([replace(ROI_name,'_','-') ' ' modailty ' | N = ' num2str(new_N) ', ' nu
 
 %% Helper functions %%
 function LL= loglikelihood(num_obs, rmse, sse)
-    LL = -0.5 * num_obs * log( 2*pi*(rmse^2) ) - (1/(2*(rmse^2))) * sse;
+LL = -0.5 * num_obs * log( 2*pi*(rmse^2) ) - (1/(2*(rmse^2))) * sse;
 end
