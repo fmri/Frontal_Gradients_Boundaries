@@ -16,7 +16,7 @@ N_ROIs = length(ROIs);
 
 hemis = {'lh', 'rh'};
 
-subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI'};
+subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI', 'SL'};
 N = length(subjCodes);
 
 contrasts = {'vP-f', 'vA-vP', 'aP-f', 'aA-aP', 'aPvP-f', 'vAaA-vPaP'};
@@ -101,6 +101,7 @@ legend({'Visual', 'Auditory', 'Supramodal'});
 yline(0.2, '--r');
 
 %% Create LME table
+contrasts_simplified = {'visual', 'auditory', 'supramodal'};
 
 LME_table_full = table();
 for ss = 1:N
@@ -192,7 +193,6 @@ end
 
 %% Plot posterior-anterior coord against PSC ratio
 coordinates_cut = coordinates(:,:,:,[1,3,5]);
-contrasts_simplified = {'visual', 'auditory', 'supramodal'};
 for cc = 1:3
     ratios = PSC_ratios(:,:,:,cc);
     coords = coordinates_cut(:,:,:,cc);

@@ -11,9 +11,9 @@ arguments (Input)
     xs (:,1) {mustBeMatrix, mustBeNonNan, mustBeNonempty} % x coordinates
     ys (:,1) {mustBeMatrix, mustBeNonNan, mustBeNonempty} % y coordinates
     Ts (:,1) {mustBeMatrix, mustBeNonNan, mustBeNonempty} % individual data values corresponding to x and y coordinates
-    group_data (:,1) {mustBeMatrix, mustBeNonNan, mustBeNonempty} % group data values corresponding to x and y coordinates (used for guessing starting fit values)
+    group_data (:,1) {mustBeMatrix, mustBeNonNan} % group data values corresponding to x and y coordinates (used for guessing starting fit values)
     angle (1,1) {mustBeNumeric, mustBeNonNan, mustBeNonempty} % degrees to rotate the coordinates and fit
-    slice_size (1,1) {mustBeNumeric} = 4.4 % mm for length of slices in along y axis
+    slice_size (1,1) {mustBeNumeric} = 2.2 % mm for length of slices in along y axis
 end
 
 % Rotate data to desired angle outslide slice loop
@@ -39,7 +39,11 @@ for ss = 1:n_slices
     slice_xs = xs_new(slice_mask);
     slice_ys = ys_new(slice_mask);
     slice_Ts = Ts(slice_mask);
-    slice_group_data = group_data(slice_mask);
+    if isempty(group_data)
+        slice_group_data = [];
+    else
+        slice_group_data = group_data(slice_mask);
+    end
     if length(slice_Ts) < 20
         disp(['Fewer than 20 data points in slice ' num2str(ss) '/' num2str(n_slices) '... skipping slice']);
         continue
@@ -55,8 +59,11 @@ for ss = 1:n_slices
             'coefficients', {'x1','x2', 'x3'}); % x1 is step location, x2 is pre-step, x3 is post-step
 
         % Calculate initial guesses for boundary model parameters using group-level data
-        startpoint_guesses = [mean(slice_xs), mean([slice_group_data(slice_group_data<0);0]), mean([slice_group_data(slice_group_data>0); 0])]; % estimates for step location, pre-step z value, and post-step z value
-
+        if isempty(slice_group_data)
+            startpoint_guesses = [mean(slice_xs), -1.5, 1.5]; % if no group data, hardcoded guesses
+        else
+            startpoint_guesses = [mean(slice_xs), mean([slice_group_data(slice_group_data<0);0]), mean([slice_group_data(slice_group_data>0); 0])]; % estimates for step location, pre-step z value, and post-step z value
+        end
         [fit_res_curr, gof_curr, info_curr] = fit(slice_xs, slice_Ts, model, 'StartPoint', startpoint_guesses); % actually fit
         parameters = [fit_res_curr.x1, fit_res_curr.x2, fit_res_curr.x3, nan];
     elseif strcmp(type, 'linear')
@@ -66,11 +73,15 @@ for ss = 1:n_slices
             'coefficients', {'a','b'}); % a is slope, b is intercept
 
         % Calculate initial guesses for gradient model parameters using group-level data
-        X = [slice_xs, ones(length(slice_xs),1)];
-        coefs = X \ slice_group_data; % linear regression on only x coordinates
-        slope_guess = coefs(1); % 1st param is slope
-        intercept_guess = coefs(2); % 2nd is intercept
-        startpoint_guesses = [slope_guess, intercept_guess];
+        if isempty(slice_group_data)
+            startpoint_guesses = [-1.5, 3/(max(slice_xs)-min(slice_xs))]; % if no group data, hardcoded guesses
+        else
+            X = [slice_xs, ones(length(slice_xs),1)];
+            coefs = X \ slice_group_data; % linear regression on only x coordinates
+            slope_guess = coefs(1); % 1st param is slope
+            intercept_guess = coefs(2); % 2nd is intercept
+            startpoint_guesses = [slope_guess, intercept_guess];
+        end
 
         [fit_res_curr, gof_curr, info_curr] = fit(slice_xs, slice_Ts, model, 'StartPoint', startpoint_guesses); % actually fit
         parameters = [fit_res_curr.a, fit_res_curr.b, nan, nan];
@@ -81,8 +92,12 @@ for ss = 1:n_slices
             'coefficients', {'a','b','x1', 'x2'}); % a is z from -Inf to x1, b is z from x2 to Inf, x1 is where to start linear piece, x2 is where to end linear piece
 
         % Calculate initial guesses for gradient model parameters using group-level data
-        startpoint_guesses = [max([mean([slice_group_data(slice_group_data<0);0]), min(slice_group_data)]), min([mean([slice_group_data(slice_group_data>0);0]), ...
-                              max(slice_group_data)]), prctile(slice_xs, 25), prctile(slice_xs, 50)]; % estimates
+        if isempty(slice_group_data)
+            startpoint_guesses = [-1.5, 1.5, prctile(slice_xs, 25), prctile(slice_xs, 50)]; % if no group data, hardcoded guesses
+        else
+            startpoint_guesses = [max([mean([slice_group_data(slice_group_data<0);0]), min(slice_group_data)]), min([mean([slice_group_data(slice_group_data>0);0]), ...
+                                  max(slice_group_data)]), prctile(slice_xs, 25), prctile(slice_xs, 50)]; % estimates
+        end
         lower_bounds = [-10, -10, min(slice_xs), 0];
         upper_bounds = [10, 10, max(slice_xs), max(slice_xs)-min(slice_xs)];
 

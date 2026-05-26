@@ -23,7 +23,7 @@ num_hemis = length(hemis);
 fs_num = 163842; % number of vertices in fsaverage
 
 % Get participant IDs
-subjCodes = {'MK','AB''AD','LA','AE','TP','NM','AF','AG','AI','GG','UV','PQ','KQ','LN','RT','PT','PL','NS'};
+subjCodes = {'MK','AB','AD','LA','AE','TP','NM','AF','AG','AI','GG','UV','PQ','KQ','LN','RT','PT','PL','NS'};
 N_subjs = length(subjCodes);
 
 % Set up directories

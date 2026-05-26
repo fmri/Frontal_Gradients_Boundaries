@@ -16,7 +16,7 @@ N_ROIs = length(ROIs);
 
 hemis = {'lh', 'rh'};
 
-subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI'};
+subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI', 'SL'};
 N = length(subjCodes);
 
 contrasts = {'vAvP-f', 'aAaP-f'};
@@ -56,7 +56,7 @@ end
 
 %% Loop through subjs/ROIs/contrasts to create ROIs
 ROI_size = nan(N, 2, N_ROIs, N_contrasts+1); % subjs x hemis x ROIs x contrast+1
-ROI_good = nan(N, 2, N_ROIs, N_contrasts+1);
+ROI_good_persubj = nan(N, 2, N_ROIs, N_contrasts+1);
 
 for ss = 1:N
     subjCode = subjCodes{ss};
@@ -73,10 +73,10 @@ for ss = 1:N
                 final_ROImask = prob_ROI_mask & data_thresh_mask';
                 final_ROImasks(:,cc) = final_ROImask;
                 ROI_size(ss,hh,rr,cc) = sum(final_ROImask);
-                ROI_good(ss,hh,rr,cc) = sum(final_ROImask) >= (sum(prob_ROI_mask)*ROI_vertices_thresh); % are the number of ROIs more than 10% of the search space?
+                ROI_good_persubj(ss,hh,rr,cc) = sum(final_ROImask) >= (sum(prob_ROI_mask)*ROI_vertices_thresh); % are the number of ROIs more than 10% of the search space?
 
                 % Create ROI
-                if ROI_good(ss,hh,rr,cc)
+                if ROI_good_persubj(ss,hh,rr,cc)
                     cortex_label_inds = vertex_inds(final_ROImask) - 1;
                     cortex_label_mask = ismember(cortex_labels{hh}{:,1}, cortex_label_inds);
                     assert(length(cortex_label_inds)==sum(cortex_label_mask), 'number of vertices in ROI mask does not match number of vertices in label');
@@ -94,20 +94,20 @@ for ss = 1:N
             % Create intersection of 2 contrast ROIs
             final_ROImask_intersection = final_ROImasks(:,1) & final_ROImasks(:,2);
             ROI_size(ss,hh,rr,N_contrasts+1) = sum(final_ROImask_intersection);
-            ROI_good(ss,hh,rr,N_contrasts+1) = sum(final_ROImask_intersection) >= (sum(prob_ROI_mask)*0.1);
+            ROI_good_persubj(ss,hh,rr,N_contrasts+1) = sum(final_ROImask_intersection) >= (sum(prob_ROI_mask)*0.1);
 
             % Create supramodal ROI
-            if ROI_good(ss,hh,rr,3)
+            if ROI_good_persubj(ss,hh,rr,3)
                 cortex_label_inds = vertex_inds(final_ROImask_intersection) - 1;
                 cortex_label_mask = ismember(cortex_labels{hh}{:,1}, cortex_label_inds);
                 assert(length(cortex_label_inds)==sum(cortex_label_mask), 'number of vertices in ROI mask does not match number of vertices in label');
                 label = table2array(cortex_labels{hh}(cortex_label_mask,:));
                 label_fname = [ROI_outdir hemi '.' ROI_name '_' contrast_names{3} '_' subjCode '.label'];
                 if ~isfile(label_fname)
-                    label_file = fopen(label_fname,'w');
-                    fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label,1)) '\n']);
-                    writematrix(label, label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
-                    fclose(label_file);
+                    % label_file = fopen(label_fname,'w');
+                    % fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label,1)) '\n']);
+                    % writematrix(label, label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
+                    % fclose(label_file);
                 end
             end
         end
@@ -120,7 +120,7 @@ perc_ROIs = nan(N_ROIs, 2, N_contrasts+1);
 for rr = 1:N_ROIs
     for hh = 1:2
         for cc = 1:N_contrasts+1
-            perc_ROIs(rr,hh,cc) = mean(ROI_good(:,hh,rr,cc));
+            perc_ROIs(rr,hh,cc) = mean(ROI_good_persubj(:,hh,rr,cc));
         end
     end
 end
@@ -142,8 +142,10 @@ end
 
 %% Reject ROIs with less than 50% subjs
 contrast_names = {'visual', 'auditory', 'supramodal'};
+subj_ROI_percs = nan(N,3);
 for cc = 1:N_contrasts+1
     good_ROIs = sum([perc_ROIs(:,1,cc), perc_ROIs(:,2,cc)]>ROI_subj_thresh,2)==2; % both hemis have over 50%
+    subj_ROI_percs(:,cc) = mean(ROI_good_persubj(:,:,good_ROIs,cc),[2,3]);
 
     % Delete ROI labels for ROIs without enough subjs
     for rr = 1:N_ROIs
@@ -168,4 +170,9 @@ for cc = 1:N_contrasts+1
     xlabel('ROI');
     title([contrast_names{cc} ' | ' num2str(round(mean(new_perc_data_ROI, 'all'),3) )])
     yline(.50, '--r');
+end
+
+%% Check what %s of ROIs each subj has
+for ss = 1:N
+    subj_ROI_data = ROI_good_persubj(ss,:,good_ROIs,:)
 end

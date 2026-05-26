@@ -8,7 +8,7 @@ arguments (Input)
     xs (:,1) {mustBeMatrix, mustBeNonNan, mustBeNonempty} % x coordinates
     ys (:,1) {mustBeMatrix, mustBeNonNan, mustBeNonempty} % y coordinates
     Ts (:,1) {mustBeMatrix, mustBeNonNan, mustBeNonempty} % individual data values corresponding to x and y coordinates
-    group_data (:,1) {mustBeMatrix, mustBeNonNan, mustBeNonempty} % group data values corresponding to x and y coordinates (used for guessing starting fit values)
+    group_data (:,1) {mustBeMatrix, mustBeNonNan} % group data values corresponding to x and y coordinates (used for guessing starting fit values)
     angles {mustBeMatrix, mustBeNonNan, mustBeNonempty} % degrees to rotate the coordinates and fit (this function will output the info for the best fit out of all angles)
 end
 
@@ -24,8 +24,13 @@ if strcmp(type, 'step')
         theta = deg2rad(angles(aa));
         xs_new = xs * cos(theta) - ys * sin(theta); % rotate xs
         ys_new = xs * sin(theta) + ys * cos(theta); % rotate ys
-
-        startpoint_guesses = [mean(xs_new), mean([group_data(group_data<0);0]), mean([group_data(group_data>0); 0])]; % estimates for step location, pre-step z value, and post-step z value
+        
+        if isempty(group_data)
+            startpoint_guesses = [mean(xs_new), -1.5, 1.5]; % if no group data, hardcoded guesses
+        else
+            startpoint_guesses = [mean(xs_new), mean([group_data(group_data<0);0]), mean([group_data(group_data>0); 0])]; % estimates for step location, pre-step z value, and post-step z value
+        end
+        
         [~, gof_curr, ~] = fit(xs_new, Ts, model, 'StartPoint', startpoint_guesses);
 
         if best_rsquare<gof_curr.rsquare

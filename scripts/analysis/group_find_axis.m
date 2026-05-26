@@ -1,4 +1,4 @@
-function [rotated_xs,rotated_ys] = group_find_axis(method, group_data_diff, xs, ys, hemi)
+function [rotated_xs,rotated_ys,angle] = group_find_axis(method, group_data_diff, xs, ys, hemi)
 %GROUP_FIND_AXIS attempts to calculate the axis of greatest change in a 2D flat patch 
 
     arguments (Input)
@@ -84,6 +84,8 @@ function [rotated_xs,rotated_ys] = group_find_axis(method, group_data_diff, xs, 
     xy = [xs'; ys'];
     R = [x_ax_new, y_ax_new]'; % rotation matrix
     xy_rotated = R * xy;
+    theta_rad = atan2(R(2,1), R(1,1));
+    angle = rad2deg(theta_rad);
     rotated_xs = xy_rotated(1,:); % new coords
     rotated_ys = xy_rotated(2,:); % new coords
 

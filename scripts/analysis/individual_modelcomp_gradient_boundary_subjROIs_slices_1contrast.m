@@ -15,7 +15,7 @@ num_hemis = length(hemis);
 fs_num = 163842; % number of vertices in fsaverage
 
 % Get participant IDs
-subjCodes = {'MK','AB''AD','LA','AE','TP','NM','AF','AG','AI','GG','UV','PQ','KQ','LN','RT','PT','PL','NS'};
+subjCodes = {'MK','AB', 'AD','LA','AE','TP','NM','AF','AG','AI','GG','UV','PQ','KQ','LN','RT','PT','PL','NS'};
 N_subjs = length(subjCodes);
 
 % Set up directories
@@ -25,9 +25,9 @@ group_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked
 subj_ROIs = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/subj_specific_01/';
 
 % Set models/methods used
-contrast = 'aA-aP'; % which functional data contrasts to use 
-modailty = 'auditory'; % visual, auditory, supramodal, visaud
-ROI_name = 'inf_lat_frontal'; % Which ROI to look at: midIFS, aINS, preSMA, inf_lat_frontal, sup_lat_frontal, cIPS, visaud_cIFSG_midIFS_interface
+contrast = 'vP-f'; % which functional data contrasts to use 
+modality = 'visual'; % visual, auditory, supramodal, visaud
+ROI_name = 'preSMA'; % Which ROI to look at: midIFS, aINS, preSMA, inf_lat_frontal, sup_lat_frontal, cIPS, visaud_cIFSG_midIFS_interface
 models = {'step', 'linear', 'hinge'};
 axis_method = 'regression'; % regression (uses regression to find axis of largest difference) or average (uses weighted average of positive and negative pts to make line)
 axis_choice = 'step'; % step (use step function axis for all models) or individual (use best axis for each model individually)
@@ -58,7 +58,7 @@ for hh = 1:num_hemis
     group_data_ROI = group_data_curr.vol(ROIs{hh}.ind+1); % index numbers in labels/patches start at 0, but indexing starts at 1 in matlab, so add one when indexing like this
 
     % Lower bound stats at 0 (more interpretable when taking the difference of 2 contrasts)
-    group_data_ROI(group_data_ROI<0) = 0;
+    %group_data_ROI(group_data_ROI<0) = 0;
     group_data{hh} = group_data_ROI; 
 
     % Find axis of greatest change and rotate coordinates so X axis is greatest change axis
@@ -67,13 +67,14 @@ end
 
 %% Loop over subjects and fit boundary and gradient models to contrast data
 % Lots of stats/diagnostic storage variables
-ROI_Ts = cell(N_subjs, 2); % T stats for each ROI/subj/hemi
 winning_model = nan(N_subjs, num_hemis); % which model had best BIC (1 is step, 2 is linear, 3 is hinge)
 model_comp = nan(N_subjs, num_hemis); % BIC difference values between winner and next best
 winning_rsquare = nan(N_subjs, num_hemis); % r-square of winning model
 linear_xdist = nan(N_subjs, num_hemis); % distance of hinge in hinge model (mm)
 BICs = nan(N_subjs, num_hemis, 3); % Raw BICs for each model
 change_direction = nan(N_subjs, num_hemis, 3); % 1 for expected direction (increase along X axis), else 0
+xs_store = cell(N_subjs, num_hemis);
+Ts_store = cell(N_subjs, num_hemis);
 
 % Parameters for how to rotate axis when fitting
 deg_step = 1; % degrees
@@ -89,8 +90,9 @@ for hh = 1:num_hemis
         subjCode = subjCodes{ss};
 
         % Get subj ROI
-        subjROI_path = [subj_ROIs hemi '.' ROI_name '_' modailty '_' subjCode '.label'];
+        subjROI_path = [subj_ROIs hemi '.' ROI_name '_' modality '_' subjCode '.label'];
         if ~isfile(subjROI_path) % if this ROI doesn't exist, the subj didn't have enough good signal/vertices in this ROI, skip it
+            disp([subjCode ' ' hemi ' missing ' ROI_name ' ' modality])
             continue;
         end
 
@@ -101,11 +103,8 @@ for hh = 1:num_hemis
         subjROI_y = ROIs{hh}.y(patch_inds_mask);
 
         tstats = MRIread([subjdir subjCode '/localizer/localizer_contrasts_0sm_' hemi '/' contrast '/t.nii.gz']);
-        ROI_tstat = tstats.vol(patch_inds+1); % index numbers in labels/patches start at 0, but indexing starts at 1 in matlab, so add one when indexing like this
-        ROI_tstat(ROI_tstat<0) = 0; % Clip negative t-stats at zero so that subtraction of 2 contrasts makes sense
-        ROI_Ts{ss,hh} = ROI_tstat;
-
-        Ts = ROI_Ts{ss,hh};
+        Ts = tstats.vol(patch_inds+1); % index numbers in labels/patches start at 0, but indexing starts at 1 in matlab, so add one when indexing like this
+        %ROI_tstat(ROI_tstat<0) = 0; % Clip negative t-stats at zero so that subtraction of 2 contrasts makes sense
         
         % Clip big outliers
         thresh = mean(Ts(Ts>0)) * 5;
@@ -121,8 +120,8 @@ for hh = 1:num_hemis
             f1 = figure;
             subplot(2,2,1);
             scatter(xs, ys, [], Ts, 'filled');
-            clim_set = max(abs(prctile(Ts, [10,90])));
-            xlabel('x'); ylabel('y'); cb = colorbar; colormap('autumn'); clim([0, clim_set]); ylabel(cb, 'T-stat', 'rotation', 270);
+            clim_set = prctile(Ts, [10,90]);
+            xlabel('x'); ylabel('y'); cb = colorbar; clim(clim_set); ylabel(cb, 'T-stat', 'rotation', 270);
             xlim([min(xs),max(xs)]); ylim([min(ys),max(ys)]);
             title('original');
         end
@@ -132,13 +131,15 @@ for hh = 1:num_hemis
         winning_angle = individual_find_axis_noslice('step', xs, ys, Ts, group_data_curr, angles);
         winning_angles(ss,hh) = winning_angle; 
         [metrics_step, ~, ~, xs_new, ys_new, ~, bins_step] = fit_GB_model_slices('step', xs, ys, Ts, group_data_curr, winning_angle);
+        xs_store{ss,hh} = xs_new;
+        Ts_store{ss,hh} = Ts;
 
         if plot_fits % plot step model fit
             figure(f1);
             subplot(2,2,2);
             scatter(xs_new, ys_new, [], Ts, 'filled');
-            clim_set = max(abs(prctile(Ts, [10,90])));
-            xlabel('x'); ylabel('y'); cb = colorbar; colormap(redbluedark); clim([-clim_set, clim_set]); ylabel(cb, 'T-stat', 'rotation', 270);
+            clim_set = prctile(Ts, [10,90]);
+            xlabel('x'); ylabel('y'); cb = colorbar; colormap(redbluedark); clim(clim_set); ylabel(cb, 'T-stat', 'rotation', 270);
             xlim([min(xs_new),max(xs_new)]); ylim([min(ys_new),max(ys_new)]);
             hold on;
             for bb = 1:length(bins_step)-1
@@ -156,8 +157,8 @@ for hh = 1:num_hemis
             figure(f1);
             subplot(2,2,3);
             scatter(xs_new, ys_new, [], Ts, 'filled');
-            clim_set = max(abs(prctile(Ts, [10,90])));
-            xlabel('x'); ylabel('y'); cb = colorbar; colormap(redbluedark); clim([-clim_set, clim_set]); ylabel(cb, 'T-stat', 'rotation', 270);
+            clim_set = prctile(Ts, [10,90]);
+            xlabel('x'); ylabel('y'); cb = colorbar; colormap(redbluedark); clim(clim_set); ylabel(cb, 'T-stat', 'rotation', 270);
             xlim([min(xs_new),max(xs_new)]); ylim([min(ys_new),max(ys_new)]);
             title(['linear: rsqr=' num2str(round(mean(metrics_linear.rsquare, 'omitnan', "Weights", metrics_step.numobs),2))])        
         end
@@ -169,8 +170,8 @@ for hh = 1:num_hemis
             figure(f1);
             subplot(2,2,4);
             scatter(xs_new, ys_new, [], Ts, 'filled');
-            clim_set = max(abs(prctile(Ts, [10,90])));
-            xlabel('x'); ylabel('y'); cb = colorbar; colormap(redbluedark); clim([-clim_set, clim_set]); ylabel(cb, 'T-stat', 'rotation', 270);
+            clim_set = prctile(Ts, [10,90]);
+            xlabel('x'); ylabel('y'); cb = colorbar; colormap(redbluedark); clim(clim_set); ylabel(cb, 'T-stat', 'rotation', 270);
             xlim([min(xs_new),max(xs_new)]); ylim([min(ys_new),max(ys_new)]);
             hold on;
             for bb = 1:length(bins_step)-1
@@ -289,7 +290,10 @@ xlim([-2,4]); xticks([]);
 ylabel('R-squared');
 title(['Hinge Model R-squared | \mu=', num2str(round(mean(rsqr_hingewinners),2))])
 
-sgtitle([replace(ROI_name,'_','-') ' ' modailty ' | N = ' num2str(new_N) ', ' num2str(length(rsqr_hingewinners))]);
+sgtitle([replace(ROI_name,'_','-') ' ' modality ' | N = ' num2str(new_N) ', ' num2str(length(rsqr_hingewinners))]);
+
+%% Save out data
+save('preSMA_vis_SMC_xs_Ts.mat', 'subjCodes', 'hemis', 'xs_store', 'Ts_store', 'ROI_name');
 
 %% Helper functions %%
 function LL= loglikelihood(num_obs, rmse, sse)

@@ -15,12 +15,11 @@ tic;
 %% Initialize Key Variables
 
 iterations = 10000; 
-contrasts = {'aAaP-f', 'vAvP-f'};
-keyword= 'visaud'; % used for naming nii files (auditory, visual, supramodal, visaud)
-contrast_labels = {'aud', 'vis'};
+contrasts = {'vA-vP', 'aA-aP'; 'f-vP', 'f-aP'}; % (supramodal is {'vA-vP', 'aA-aP'; 'f-vP', 'f-aP'}))
+keyword= 'supramodal'; % used for naming nii files (auditory, visual, supramodal, visaud)
 N_contrasts = length(contrasts);
 
-subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI'};
+subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI', 'SL'};
 N = length(subjCodes);
 
 N_vertices = 163842;
@@ -31,19 +30,21 @@ pval_thresh = -log10(0.05); % pvals in freesurfer files are expressed as -log10(
 permutations = rand(N, iterations)>0.5; % swap or not for each subj in each iteration (50% chance)
 
 data_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
-permuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_VisAud/';
-unpermuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/VisAud_nonpermuted_probabilistics/';
+permuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
+unpermuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
 
 %% Create alternative contrast names if needed
-flip = zeros(N_contrasts);
-for cc = 1:N_contrasts
-    contrast = contrasts{cc};
-    if length(contrasts{cc})==4 & strcmp(contrast(end-2:end), 'P-f')
-        split_str = split(contrast,'-');
-        contrasts_alt{cc} = [split_str{2} '-' split_str{1}]; % contrast string coded backwards for single modality SMC contrasts
-        flip(cc) = 1;
-    else
-        contrasts_alt{cc} = contrast;
+if ~strcmp(keyword, 'supramodal')
+    flip = zeros(N_contrasts);
+    for cc = 1:N_contrasts
+        contrast = contrasts{cc};
+        if length(contrasts{cc})==4 & strcmp(contrast(end-2:end), 'P-f')
+            split_str = split(contrast,'-');
+            contrasts_alt{cc} = [split_str{2} '-' split_str{1}]; % contrast string coded backwards for single modality SMC contrasts
+            flip(cc) = 1;
+        else
+            contrasts_alt{cc} = contrast;
+        end
     end
 end
 
@@ -135,13 +136,13 @@ WM_probmap = sum(WM_data, 3);
 SMC_probmap = sum(SMC_data, 3);
 
 data.vol = WM_probmap(:,1)'; % reusing "data" structure and overwriting vol data so that all the other fields are prefilled and correct
-MRIwrite(data, [unpermuted_maps_outdir, 'lh_original_aud_' keyword '.nii']);
+MRIwrite(data, [unpermuted_maps_outdir, 'lh_original_WM_' keyword '.nii']);
 data.vol = SMC_probmap(:,1)';
-MRIwrite(data, [unpermuted_maps_outdir, 'lh_original_vis_' keyword '.nii']);
+MRIwrite(data, [unpermuted_maps_outdir, 'lh_original_SMC_' keyword '.nii']);
 
 data.vol = WM_probmap(:,2)'; % reusing "data" structure and overwriting vol data so that all the other fields are prefilled and correct
-MRIwrite(data, [unpermuted_maps_outdir, 'rh_original_aud_' keyword '.nii']);
+MRIwrite(data, [unpermuted_maps_outdir, 'rh_original_WM_' keyword '.nii']);
 data.vol = SMC_probmap(:,2)';
-MRIwrite(data, [unpermuted_maps_outdir, 'rh_original_vis_' keyword '.nii']);
+MRIwrite(data, [unpermuted_maps_outdir, 'rh_original_SMC_' keyword '.nii']);
 
 

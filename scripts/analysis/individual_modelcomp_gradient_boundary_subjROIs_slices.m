@@ -15,7 +15,7 @@ num_hemis = length(hemis);
 fs_num = 163842; % number of vertices in fsaverage
 
 % Get participant IDs
-subjCodes = {'MK','AB''AD','LA','AE','TP','NM','AF','AG','AI','GG','UV','PQ','KQ','LN','RT','PT','PL','NS'};
+subjCodes = {'MK','AB', 'AD','LA','AE','TP','NM','AF','AG','AI','GG','UV','PQ','KQ','LN','RT','PT','PL','NS','SL'};
 N_subjs = length(subjCodes);
 
 % Set up directories
@@ -25,10 +25,10 @@ group_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked
 subj_ROIs = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/subj_specific_01/';
 
 % Set models/methods used
-contrasts = {'vA-vP', 'vP-f'}; % which functional data contrasts to use (supramodal is 'aPvP-f', 'vAaA-vPaP')
+contrasts = {'aP-f', 'aA-aP'}; % which functional data contrasts to use (supramodal is 'aPvP-f', 'vAaA-vPaP')
 N_contrasts = length(contrasts);
-modailty = 'visual'; % visual, auditory, supramodal, visaud
-ROI_name = 'preSMA'; % Which ROI to look at: midIFS, aINS, preSMA, inf_lat_frontal, sup_lat_frontal, cIPS, visaud_cIFSG_midIFS_interface
+modality = 'auditory'; % visual, auditory, supramodal, visaud
+ROI_name = 'preSMA'; % Which ROI to look at: preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, cIPS, visaud_cIFSG_midIFS_interface
 models = {'step', 'linear', 'hinge'};
 axis_method = 'average'; % regression (uses regression to find axis of largest difference) or average (uses weighted average of positive and negative pts to make line)
 axis_choice = 'step'; % step (use step function axis for all models) or individual (use best axis for each model individually)
@@ -44,6 +44,8 @@ ROIs = {ROI_lh, ROI_rh};
 
 %% Compute group level axis of greatest change
 group_data_diff = cell(2,1);
+group_angle = nan(2,1);
+percent_neg = nan(2,1);
 
 for hh = 1:num_hemis
     hemi = hemis{hh};
@@ -63,17 +65,20 @@ for hh = 1:num_hemis
     % Lower bound stats at 0 (more interpretable when taking the difference of 2 contrasts)
     group_data_ROI{1}(group_data_ROI{1}<0) = 0;
     group_data_ROI{2}(group_data_ROI{2}<0) = 0;
+    percent_neg(hh) = sum(group_data_ROI{1}<0 | group_data_ROI{2}<0) / length(group_data_ROI{1});
 
     % Take difference of 2 contrasts
     group_data_diff{hh} = group_data_ROI{2}' - group_data_ROI{1}';
 
     % Find axis of greatest change and rotate coordinates so X axis is greatest change axis
-    [ROIs{hh}.x, ROIs{hh}.y] = group_find_axis(axis_method, group_data_diff{hh}, ROIs{hh}.x', ROIs{hh}.y', hemi);
+    [ROIs{hh}.x, ROIs{hh}.y, group_angle(hh)] = group_find_axis(axis_method, group_data_diff{hh}, ROIs{hh}.x', ROIs{hh}.y', hemi);
 end
 
 %% Loop over subjects and fit boundary and gradient models to contrast data
 % Lots of stats/diagnostic storage variables
-ROI_Ts = cell(N_subjs, N_contrasts, 2); % T stats for each ROI/subj/hemi
+Ts_store = cell(N_subjs, N_contrasts, 2); % T stats for each ROI/subj/hemi
+xs_store = cell(N_subjs, num_hemis);
+patch_inds_store = nan(N_subjs, num_hemis, 2);
 winning_model = nan(N_subjs, num_hemis); % which model had best BIC (1 is step, 2 is linear, 3 is hinge)
 model_comp = nan(N_subjs, num_hemis); % BIC difference values between winner and next best
 winning_rsquare = nan(N_subjs, num_hemis); % r-square of winning model
@@ -86,6 +91,7 @@ deg_step = 1; % degrees
 deg_tolerance = 60; % searching +/- 45 degrees off of group axis of greatest change
 angles = 0-deg_tolerance:deg_step:0+deg_tolerance;
 winning_angles = nan(N_subjs, num_hemis); % which angle was optimal
+perc_neg = nan(N_subjs, num_hemis, N_contrasts);
 
 tic;
 for hh = 1:num_hemis
@@ -95,7 +101,7 @@ for hh = 1:num_hemis
         subjCode = subjCodes{ss};
 
         % Get subj ROI
-        subjROI_path = [subj_ROIs hemi '.' ROI_name '_' modailty '_' subjCode '.label'];
+        subjROI_path = [subj_ROIs hemi '.' ROI_name '_' modality '_' subjCode '.label'];
         if ~isfile(subjROI_path) % if this ROI doesn't exist, the subj didn't have enough good signal/vertices in this ROI, skip it
             continue;
         end
@@ -111,12 +117,13 @@ for hh = 1:num_hemis
             contrast = contrasts{cc};
             tstats = MRIread([subjdir subjCode '/localizer/localizer_contrasts_0sm_' hemi '/' contrast '/t.nii.gz']);
             ROI_tstat = tstats.vol(patch_inds+1); % index numbers in labels/patches start at 0, but indexing starts at 1 in matlab, so add one when indexing like this
+            Ts_store{ss,cc,hh} = ROI_tstat;
+            perc_neg(ss,hh,cc) = sum(ROI_tstat<0)/length(ROI_tstat);
             ROI_tstat(ROI_tstat<0) = 0; % Clip negative t-stats at zero so that subtraction of 2 contrasts makes sense
-            ROI_Ts{ss,cc,hh} = ROI_tstat;
         end
 
         % Get difference between contrasts in ROI
-        ROI_t_diffs = ROI_Ts{ss,2,hh}  - ROI_Ts{ss,1,hh};
+        ROI_t_diffs = Ts_store{ss,2,hh}  - Ts_store{ss,1,hh};
 
         % Replace outliers with 3 stds away from median value (clipping)
         ROI_t_diffs = filloutliers(ROI_t_diffs, 'clip', 'median'); % 3 stds from median is outlier
@@ -143,7 +150,8 @@ for hh = 1:num_hemis
         winning_angle = individual_find_axis_noslice('step', xs, ys, Ts, group_data_curr, angles);
         winning_angles(ss,hh) = winning_angle; 
         [metrics_step, ~, ~, xs_new, ys_new, ~, bins_step] = fit_GB_model_slices('step', xs, ys, Ts, group_data_curr, winning_angle);
-
+        xs_store{ss,hh} = xs_new;
+        
         if plot_fits % plot step model fit
             figure(f1);
             subplot(2,2,2);
@@ -225,9 +233,9 @@ for hh = 1:num_hemis
         end
 
         %% Check direction of change for each model
-        change_direction(ss,hh,1) = mode(metrics_step.p2 < metrics_step.p3);
-        change_direction(ss,hh,2) = mode(metrics_linear.p1 > 0);
-        change_direction(ss,hh,3) = mode(metrics_hinge.p3 < metrics_hinge.p4);
+        change_direction(ss,hh,1) = round(mean(double(metrics_step.p2 < metrics_step.p3), 'omitnan', 'Weights', metrics_step.numobs));
+        change_direction(ss,hh,2) = round(mean(double(metrics_linear.p1 > 0), 'omitnan', 'Weights', metrics_linear.numobs));
+        change_direction(ss,hh,3) = round(mean(double(metrics_hinge.p3 < metrics_hinge.p4), 'omitnan', 'Weights', metrics_hinge.numobs));
     end
 end
 toc
@@ -239,21 +247,21 @@ for mm = 1:3
 end
 
 %% Basic counts to compare models
-% Something is off here, these should all add up to total
-total_gradient_win = sum(winning_model==3 & winning_rsquare>0.1 & model_comp<-10 & linear_xdist>dist_thresh & change_direction(:,:,1)==1) % put them all together
-total_boundary_win = sum(( (winning_model==1 & model_comp<-10) | (winning_model==3 & linear_xdist<=dist_thresh) ) & winning_rsquare>0.1 & change_direction(:,:,3)==1) % put them all together
-total_linear_win = sum(winning_model==2 & winning_rsquare>0.1 & model_comp<-10 & change_direction(:,:,2)==1) % put them all together
+gradient_wins = winning_model==3 & winning_rsquare>0.1 & model_comp<-10 & linear_xdist>dist_thresh & change_direction(:,:,3)==1;
+total_gradient_win = sum(gradient_wins)
+total_boundary_win = sum(( (winning_model==1 & model_comp<-10 & change_direction(:,:,1)==1) | (winning_model==3 & linear_xdist<=dist_thresh & change_direction(:,:,3)==1) ) & winning_rsquare>0.1) 
+total_linear_win = sum(winning_model==2 & winning_rsquare>0.1 & model_comp<-10 & change_direction(:,:,2)==1) 
 weak_evidence = sum( (~(winning_model==3 & linear_xdist<=dist_thresh) & model_comp>=-10) & winning_rsquare>0.1 & good_winning_direction==1)
 bad_direction = sum(good_winning_direction==0 & winning_rsquare>0.1)
 r2_rejects = sum(winning_rsquare<=0.1)
+no_ROI = sum(isnan(winning_model))
 
-total = 36 - sum(isnan(winning_model), 'all')
+total = (N_subjs*2) - sum(isnan(winning_model), 'all')
 total_check = sum([total_gradient_win,total_boundary_win,total_linear_win,weak_evidence,bad_direction,r2_rejects])
 
 %% Group plots/tests
 BIC_allhemis = reshape(BICs, [size(BICs,1)*size(BICs,2), size(BICs,3)]); % collapse hemispheres
-hingedir_allhemis = reshape(change_direction(:,:,3), [size(change_direction,1)*size(change_direction,2),1]); % collapse hemispheres
-winning_model_allhemis = reshape(winning_model, [size(winning_model,1)*size(winning_model,2),1]); % collapse hemispheres
+hingedir_allhemis = reshape(good_winning_direction, [size(good_winning_direction,1)*size(good_winning_direction,2),1]); % collapse hemispheres
 
 % plot angles
 figure;
@@ -286,7 +294,7 @@ ylabel('Hinge Length Across Cortex (mm)');
 title({['Hinge Length | \mu=' num2str(round(mean(xdists_hingewinners),2))]})
 
 % Plot hinge R squareds
-rsqr_hingewinners = winning_rsquare(winning_model==3 & change_direction(:,:,3)==1);
+rsqr_hingewinners = winning_rsquare(gradient_wins & change_direction(:,:,3)==1);
 m = mean(rsqr_hingewinners);
 SE = std(rsqr_hingewinners/sqrt(length(rsqr_hingewinners)));
 subplot(1,3,3);
@@ -294,10 +302,15 @@ swarmchart(ones(length(rsqr_hingewinners)), rsqr_hingewinners, [], 'k', 'filled'
 errorbar(1, m, SE, 'Color', 'r','Marker', '.', 'MarkerSize', 30, 'CapSize',15, 'LineWidth',3);
 yline(0.1, '--r');
 xlim([-2,4]); xticks([]);
+ylim([0,max(rsqr_hingewinners+0.05)])
 ylabel('R-squared');
 title(['Hinge Model R-squared | \mu=', num2str(round(mean(rsqr_hingewinners),2))])
 
-sgtitle([replace(ROI_name,'_','-') ' ' modailty ' | N = ' num2str(new_N) ', ' num2str(length(rsqr_hingewinners))]);
+sgtitle([replace(ROI_name,'_','-') ' ' modality ' | N = ' num2str(new_N) ', ' num2str(length(rsqr_hingewinners)) ' hinge wins']);
+
+%% Save 
+save([ROI_name '_' modality '_WMSMC_xs_Ts.mat'], 'subjCodes', 'hemis', 'xs_store', 'Ts_store', 'ROI_name', 'good_winning_direction');
+
 
 %% Helper functions %%
 function LL= loglikelihood(num_obs, rmse, sse)

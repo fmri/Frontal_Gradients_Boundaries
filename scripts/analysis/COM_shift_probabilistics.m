@@ -13,9 +13,9 @@ ccc;
 ROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/probabilistic_allROIs/';
 
 hemis = {'lh', 'rh'};
-contrasts = {'vis', 'aud'};
+contrasts = {'SMC', 'WM'};
 permutation_names = {'group1', 'group2'};
-keyword = 'visaud';
+keyword = 'supramodal';
 
 % Establish which ROIs are included in the analysis (based on mean PSC ratio threshold and number of subjs with the ROI)
 switch keyword
@@ -30,7 +30,7 @@ switch keyword
         perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
         unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
     case {'supramodal', 'supra'}
-        ROI_names = {'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', 'aIPS', 'cIPS', 'midIFS'};
+        ROI_names = {'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', 'aIPS', 'cIPS'};
         perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
         unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
     case {'VisAud', 'visaud'}
@@ -57,7 +57,7 @@ tic;
 
 for cc = 1:N_contrasts
     group = permutation_names{cc};
-    for rr = 1:N_ROIs
+    parfor rr = 1:N_ROIs
         ROI_name = ROI_names{rr};
         for hh = 1:N_hemis
             hemi = hemis{hh};
@@ -97,21 +97,22 @@ for cc = 1:N_contrasts
                 patch_inds = patch.ind(ind_mask);
                 COMs(rr,cc,hh,ii,:) = ROI_data * [x; y]' / sum(ROI_data);
 
-                if plotting_diagnostics
-                    if length(findobj('type','figure'))>50
-                        disp('more than 50 plots already open, skipping plotting');
-                        continue;
-                    end
-    
-                    figure;
-                    scatter(x,y,[],ROI_data, 'filled'); hold on;
-                    scatter(COMs(rr,cc,hh,ii,1), COMs(rr,cc,hh,ii,2), 100, 'r', 'filled');
-                    %scatter(x(closest_ind), y(closest_ind), 100, 'o', 'filled');
-                    title([hemi ' ' ROI_name ' ' group ' iter' num2str(ii)])
-                end
+                % if plotting_diagnostics
+                %     if length(findobj('type','figure'))>50
+                %         disp('more than 50 plots already open, skipping plotting');
+                %         continue;
+                %     end
+                % 
+                %     figure;
+                %     scatter(x,y,[],ROI_data, 'filled'); hold on;
+                %     scatter(COMs(rr,cc,hh,ii,1), COMs(rr,cc,hh,ii,2), 100, 'r', 'filled');
+                %     %scatter(x(closest_ind), y(closest_ind), 100, 'o', 'filled');
+                %     title([hemi ' ' ROI_name ' ' group ' iter' num2str(ii)])
+                % end
 
             end
         end
+        disp(['Finished ' ROI_name])
     end
 end
 
