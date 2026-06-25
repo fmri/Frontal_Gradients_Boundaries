@@ -22,6 +22,7 @@ N = length(subjCodes);
 contrasts = {'vAvP-f', 'aAaP-f'};
 N_contrasts = length(contrasts);
 contrast_names = {'visual', 'auditory', 'supramodal'};
+save_out_ROIs = false;
 
 N_vertices = 163842;
 vertex_inds = 1:N_vertices;
@@ -82,7 +83,7 @@ for ss = 1:N
                     assert(length(cortex_label_inds)==sum(cortex_label_mask), 'number of vertices in ROI mask does not match number of vertices in label');
                     label = table2array(cortex_labels{hh}(cortex_label_mask,:));
                     label_fname = [ROI_outdir hemi '.' ROI_name '_' contrast_names{cc} '_' subjCode '.label'];
-                    if ~isfile(label_fname)
+                    if ~isfile(label_fname) & save_out_ROIs
                         label_file = fopen(label_fname,'w');
                         fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label,1)) '\n']);
                         writematrix(label, label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
@@ -103,11 +104,11 @@ for ss = 1:N
                 assert(length(cortex_label_inds)==sum(cortex_label_mask), 'number of vertices in ROI mask does not match number of vertices in label');
                 label = table2array(cortex_labels{hh}(cortex_label_mask,:));
                 label_fname = [ROI_outdir hemi '.' ROI_name '_' contrast_names{3} '_' subjCode '.label'];
-                if ~isfile(label_fname)
-                    % label_file = fopen(label_fname,'w');
-                    % fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label,1)) '\n']);
-                    % writematrix(label, label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
-                    % fclose(label_file);
+                if ~isfile(label_fname) & save_out_ROIs
+                    label_file = fopen(label_fname,'w');
+                    fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label,1)) '\n']);
+                    writematrix(label, label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');
+                    fclose(label_file);
                 end
             end
         end
@@ -143,13 +144,14 @@ end
 %% Reject ROIs with less than 50% subjs
 contrast_names = {'visual', 'auditory', 'supramodal'};
 subj_ROI_percs = nan(N,3);
+new_perc_ROI_all = nan(N_ROIs, 2, N_contrasts+1);
 for cc = 1:N_contrasts+1
     good_ROIs = sum([perc_ROIs(:,1,cc), perc_ROIs(:,2,cc)]>ROI_subj_thresh,2)==2; % both hemis have over 50%
     subj_ROI_percs(:,cc) = mean(ROI_good_persubj(:,:,good_ROIs,cc),[2,3]);
 
     % Delete ROI labels for ROIs without enough subjs
     for rr = 1:N_ROIs
-        if ~good_ROIs(rr)
+        if ~good_ROIs(rr) & save_out_ROIs
             disp(['rm ' ROI_outdir 'lh.' ROIs{rr} '_' contrast_names{cc} '_*'])
             disp(['rm ' ROI_outdir 'rh.' ROIs{rr} '_' contrast_names{cc} '_*'])
 
@@ -159,6 +161,8 @@ for cc = 1:N_contrasts+1
     end
 
     new_perc_data_ROI = [perc_ROIs(good_ROIs,1,cc), perc_ROIs(good_ROIs,2,cc)];
+    new_perc_ROI_all(:,:,cc) = perc_ROIs(:,:,cc);
+    new_perc_ROI_all(~good_ROIs,:,cc) = nan;
     disp([contrast_names{cc} ' ROIs removed: ' ROIs(~good_ROIs)]);
 
     figure;
@@ -174,5 +178,11 @@ end
 
 %% Check what %s of ROIs each subj has
 for ss = 1:N
-    subj_ROI_data = ROI_good_persubj(ss,:,good_ROIs,:)
+    subj_ROI_data = ROI_good_persubj(ss,:,good_ROIs,:);
 end
+
+%% ROI %s for 5 candidate ROIs
+ROIs_candidate = {'aINS', 'aIPS', 'inf_lat_frontal', 'midIFS', 'preSMA', 'sup_lat_frontal'};
+ROI_mask = ismember(ROIs, ROIs_candidate);
+perc_candidate_ROIs = new_perc_ROI_all(ROI_mask,:,:); 
+mean(perc_candidate_ROIs, 'all', 'omitnan')

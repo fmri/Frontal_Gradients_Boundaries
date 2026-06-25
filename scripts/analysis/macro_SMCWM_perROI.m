@@ -91,6 +91,10 @@ PSC_ratios(:,:,:,3) = PSCs(:,:,:,6) ./ (PSCs(:,:,:,5)+PSCs(:,:,:,6)); % WM / SMC
 
 means = squeeze(mean(PSC_ratios, [1,3], 'omitnan'));
 means_tbl = table(ROIs', means(:,1), means(:,2), means(:,3), 'VariableNames', {'ROIs', 'visual', 'auditory', 'supramodal'});
+% means = squeeze(mean(PSC_ratios, [1], 'omitnan'));
+% means_tbl = table(ROIs', means(:,1,1), means(:,1,2),means(:,1,3), means(:,2,1), means(:,2,2), means(:,2,3),...
+%             'VariableNames', {'ROIs', 'visual_lh', 'auditory_lh', 'supramodal_lh', ...
+%                               'visual_rh', 'auditory_rh', 'supramodal_rh'});
 
 figure;
 bar(means);

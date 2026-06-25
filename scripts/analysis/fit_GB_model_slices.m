@@ -66,6 +66,11 @@ for ss = 1:n_slices
         end
         [fit_res_curr, gof_curr, info_curr] = fit(slice_xs, slice_Ts, model, 'StartPoint', startpoint_guesses); % actually fit
         parameters = [fit_res_curr.x1, fit_res_curr.x2, fit_res_curr.x3, nan];
+        % figure;
+        % scatter(slice_xs, slice_Ts, 100, 'filled');  hold on; 
+        % plot(fit_res_curr);
+        % xlabel('x'); ylabel('T-stat Difference');
+        % fontsize(20,'points');
     elseif strcmp(type, 'linear')
         model = fittype('x*a + b',... % linear function
             'dependent', 'z',...
@@ -105,7 +110,11 @@ for ss = 1:n_slices
             'Lower', lower_bounds,...
             'Upper', upper_bounds); % actually fit
         parameters = [fit_res_curr.x1, fit_res_curr.x2, fit_res_curr.a, fit_res_curr.b]; 
-
+        % figure;
+        % scatter(slice_xs, slice_Ts, 100, 'filled'); hold on; %
+        % plot(fit_res_curr);
+        % xlabel('x'); ylabel('T-stat Difference');
+        % fontsize(20,'points')
     else
         error('model type not recognized')
     end

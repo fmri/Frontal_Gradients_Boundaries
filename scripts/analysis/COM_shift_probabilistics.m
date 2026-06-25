@@ -15,7 +15,7 @@ ROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/R
 hemis = {'lh', 'rh'};
 contrasts = {'SMC', 'WM'};
 permutation_names = {'group1', 'group2'};
-keyword = 'supramodal';
+keyword = 'visual';
 
 % Establish which ROIs are included in the analysis (based on mean PSC ratio threshold and number of subjs with the ROI)
 switch keyword
@@ -294,10 +294,9 @@ load('/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permut
 results_auditory = results_table;
 load('/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_analysis_results/visual_permtest_results.mat','results_table');
 results_visual = results_table;
-load('/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_analysis_results/supramodal_permtest_results.mat','results_table');
-results_supramodal = results_table;
 
-results_table_all = [results_auditory; results_visual; results_supramodal];
+
+results_table_all = [results_auditory; results_visual];
 [c_p,c_a,h] = fdr_BH(results_table_all.perm_pval, .05);
 results_table_all.FDR_rejectnull = h;
 

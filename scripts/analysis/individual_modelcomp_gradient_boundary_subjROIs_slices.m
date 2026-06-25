@@ -25,17 +25,17 @@ group_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked
 subj_ROIs = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/subj_specific_01/';
 
 % Set models/methods used
-contrasts = {'aP-f', 'aA-aP'}; % which functional data contrasts to use (supramodal is 'aPvP-f', 'vAaA-vPaP')
+contrasts = {'vP-f', 'vA-vP'}; % which functional data contrasts to use (supramodal is 'aPvP-f', 'vAaA-vPaP')
 N_contrasts = length(contrasts);
-modality = 'auditory'; % visual, auditory, supramodal, visaud
-ROI_name = 'preSMA'; % Which ROI to look at: preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, cIPS, visaud_cIFSG_midIFS_interface
+modality = 'visual'; % visual, auditory, supramodal, visaud
+ROI_name = 'midIFS'; % Which ROI to look at: preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, aIPS
 models = {'step', 'linear', 'hinge'};
 axis_method = 'average'; % regression (uses regression to find axis of largest difference) or average (uses weighted average of positive and negative pts to make line)
 axis_choice = 'step'; % step (use step function axis for all models) or individual (use best axis for each model individually)
 
 plot_fits = true; % plot out individual subj fits (debugging only unless you want a ~100 plots)
 
-dist_thresh = 4.4; % length in mm of 2 voxels
+dist_thresh = 5; % mm
 
 %% Load probabilistic ROI (flat patch) to use for determining group level axis of greatest change
 ROI_lh = read_patch([label_dir hemis{1} '.' ROI_name '_prob_thresh5_flat.patch']);
@@ -78,6 +78,7 @@ end
 % Lots of stats/diagnostic storage variables
 Ts_store = cell(N_subjs, N_contrasts, 2); % T stats for each ROI/subj/hemi
 xs_store = cell(N_subjs, num_hemis);
+boundary_x = nan(N_subjs, num_hemis);
 patch_inds_store = nan(N_subjs, num_hemis, 2);
 winning_model = nan(N_subjs, num_hemis); % which model had best BIC (1 is step, 2 is linear, 3 is hinge)
 model_comp = nan(N_subjs, num_hemis); % BIC difference values between winner and next best
@@ -147,10 +148,11 @@ for hh = 1:num_hemis
 
         %% Fit step-wise function to data (boundary model)
 
-        winning_angle = individual_find_axis_noslice('step', xs, ys, Ts, group_data_curr, angles);
+        [winning_angle, winning_angle_model]= individual_find_axis_noslice('step', xs, ys, Ts, group_data_curr, angles);
         winning_angles(ss,hh) = winning_angle; 
         [metrics_step, ~, ~, xs_new, ys_new, ~, bins_step] = fit_GB_model_slices('step', xs, ys, Ts, group_data_curr, winning_angle);
         xs_store{ss,hh} = xs_new;
+        boundary_x(ss,hh) = winning_angle_model.x1; 
         
         if plot_fits % plot step model fit
             figure(f1);
@@ -262,6 +264,8 @@ total_check = sum([total_gradient_win,total_boundary_win,total_linear_win,weak_e
 %% Group plots/tests
 BIC_allhemis = reshape(BICs, [size(BICs,1)*size(BICs,2), size(BICs,3)]); % collapse hemispheres
 hingedir_allhemis = reshape(good_winning_direction, [size(good_winning_direction,1)*size(good_winning_direction,2),1]); % collapse hemispheres
+BIC_lh = squeeze(BICs(:,1,:));
+BIC_lh_diffs = BIC_lh(good_winning_direction(:,1)==1,1) - BIC_lh(good_winning_direction(:,1)==1,3);
 
 % plot angles
 figure;
@@ -279,10 +283,11 @@ errorbar(1, m, SE, 'Color', 'r','Marker', '.', 'MarkerSize', 30, 'CapSize',15, '
 yline(10, '--r'); ylim([min(BIC_diffs)-20, max(BIC_diffs)+20]);
 ylabel('BIC Difference');
 xlim([-2,4]); xticks([]);
-title({['Step vs Hinge Model | \mu=' num2str(round(m,2))]})
+title({['Step vs Hinge Model | \mu=' num2str(round(m,2)) ' | SE=' num2str(round(SE,2)) ]})
 
 % Plot hinge distances
 xdists_hingewinners = linear_xdist(winning_model==3 & change_direction(:,:,3)==1);
+xdist_hingewinners_lh = linear_xdist(winning_model(:,1)==3 & change_direction(:,1,3)==1,1);
 m = mean(xdists_hingewinners);
 SE = std(xdists_hingewinners)/sqrt(length(xdists_hingewinners));
 subplot(1,3,2);
@@ -291,10 +296,11 @@ errorbar(1, m, SE, 'Color', 'r','Marker', '.', 'MarkerSize', 30, 'CapSize',15, '
 yline(dist_thresh, '--r');
 xlim([-2,4]); xticks([]);
 ylabel('Hinge Length Across Cortex (mm)');
-title({['Hinge Length | \mu=' num2str(round(mean(xdists_hingewinners),2))]})
+title({['Hinge Length | \mu=' num2str(round(mean(xdists_hingewinners),2)) '| SE=' num2str(round(SE,2)) ]})
 
 % Plot hinge R squareds
 rsqr_hingewinners = winning_rsquare(gradient_wins & change_direction(:,:,3)==1);
+rsqr_hingewinners_lh = winning_rsquare(gradient_wins(:,1)==1 & change_direction(:,1,3)==1,1);
 m = mean(rsqr_hingewinners);
 SE = std(rsqr_hingewinners/sqrt(length(rsqr_hingewinners)));
 subplot(1,3,3);
@@ -304,12 +310,12 @@ yline(0.1, '--r');
 xlim([-2,4]); xticks([]);
 ylim([0,max(rsqr_hingewinners+0.05)])
 ylabel('R-squared');
-title(['Hinge Model R-squared | \mu=', num2str(round(mean(rsqr_hingewinners),2))])
+title(['Hinge Model R-squared | \mu=', num2str(round(mean(rsqr_hingewinners),2)) ' | SE=' num2str(round(SE,2))])
 
 sgtitle([replace(ROI_name,'_','-') ' ' modality ' | N = ' num2str(new_N) ', ' num2str(length(rsqr_hingewinners)) ' hinge wins']);
 
 %% Save 
-save([ROI_name '_' modality '_WMSMC_xs_Ts.mat'], 'subjCodes', 'hemis', 'xs_store', 'Ts_store', 'ROI_name', 'good_winning_direction');
+save([ROI_name '_' modality '_WMSMC_xs_Ts.mat'], 'subjCodes', 'hemis', 'xs_store', 'boundary_x', 'Ts_store', 'ROI_name', 'good_winning_direction');
 
 
 %% Helper functions %%

@@ -1,4 +1,4 @@
-function [winning_angle] = individual_find_axis_noslice(type, xs, ys, Ts, group_data, angles)
+function [winning_angle, winning_model] = individual_find_axis_noslice(type, xs, ys, Ts, group_data, angles)
 % INDIVIDUAL_FIND_AXIS fits boundary (step function) or gradient (linear, hinge
 % functions) to the given data at the supplied angle rotations to see which
 % is the best angle to use for a given model
@@ -31,11 +31,12 @@ if strcmp(type, 'step')
             startpoint_guesses = [mean(xs_new), mean([group_data(group_data<0);0]), mean([group_data(group_data>0); 0])]; % estimates for step location, pre-step z value, and post-step z value
         end
         
-        [~, gof_curr, ~] = fit(xs_new, Ts, model, 'StartPoint', startpoint_guesses);
+        [model, gof_curr, ~] = fit(xs_new, Ts, model, 'StartPoint', startpoint_guesses);
 
         if best_rsquare<gof_curr.rsquare
             best_rsquare = gof_curr.rsquare;
             winning_angle = angles(aa);
+            winning_model = model;
         end
     end
 

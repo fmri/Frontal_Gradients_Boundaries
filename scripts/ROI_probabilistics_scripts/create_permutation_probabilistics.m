@@ -15,9 +15,9 @@ tic;
 %% Initialize Key Variables
 
 iterations = 10000; 
-contrasts = {'vA-vP', 'aA-aP'; 'f-vP', 'f-aP'}; % (supramodal is {'vA-vP', 'aA-aP'; 'f-vP', 'f-aP'}))
-keyword= 'supramodal'; % used for naming nii files (auditory, visual, supramodal, visaud)
-N_contrasts = length(contrasts);
+contrasts = {'aAaP-f', 'vAvP-f'; 'aAaP-f', ''}; % supramodal is {'vA-vP', 'aA-aP'; 'f-vP', 'f-aP'}). Supramodal_visual is {'aAaP-f', 'vAvP-f'; 'vAvP-f', ''}
+keyword= 'supramodal_auditory'; % used for naming nii files (auditory, visual, supramodal, visaud, supramodal_visual, supramodal_auditory)
+N_contrasts = 2;
 
 subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI', 'SL'};
 N = length(subjCodes);
@@ -31,10 +31,11 @@ permutations = rand(N, iterations)>0.5; % swap or not for each subj in each iter
 
 data_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
 permuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
-unpermuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
+%unpermuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
+unpermuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/supra_aud_nonpermuted_probabilistic/';
 
 %% Create alternative contrast names if needed
-if ~strcmp(keyword, 'supramodal')
+if ~ismember(keyword, {'supramodal', 'supramodal_visual', 'supramodal_auditory'})
     flip = zeros(N_contrasts);
     for cc = 1:N_contrasts
         contrast = contrasts{cc};
@@ -55,10 +56,14 @@ for hh = 1:N_hemis
     hemi = hemis{hh};
     for nn = 1:N
         subjcode = subjCodes{nn};
-        if strcmp(keyword, 'supramodal') 
+        if ismember(keyword, {'supramodal', 'supramodal_visual', 'supramodal_auditory'}) 
             for cc = 1:N_contrasts
                 data_temp = nan(N_vertices, 2);
                 for ss = 1:2
+                    if ismember(keyword, {'supramodal_visual', 'supramodal_auditory'}) && ss == 2 && cc == 2
+                        data_temp(:,ss) = true(N_vertices,1);
+                        continue;
+                    end
                     contrast = contrasts{cc,ss};
                     data = MRIread([data_dir subjcode '/localizer/localizer_contrasts_' hemi '/' contrast '/sig.nii.gz']);
                     if length(contrast)==4 & strcmp(contrast(1:2), 'f-')

@@ -2,23 +2,23 @@
 %%% The purpose of this script is to visualize the T-stats along the axis of
 %%% greatest difference of an ROI for each subj
 %%%
-%%% Tom Possidente - May 2025
+%%% Tom Possidente - May 2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 addpath(genpath('/projectnb/somerslab/tom/functions/'));
 ccc;
 
 %% Initialize Key Variables
-ROI = 'midIFS'; %preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, 
+ROI = 'sup_lat_frontal'; %preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, 
 modality = 'auditory'; % auditory, visual, supramodal
 load(['/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/individual_ROI_tstats/' ROI '_' modality '_WMSMC_xs_Ts.mat'],...
-    'Ts_store', 'subjCodes', 'hemis', 'xs_store', 'good_winning_direction');
+    'Ts_store', 'subjCodes', 'hemis', 'xs_store', 'boundary_x');
 N_subjs = length(subjCodes);
 N_hemis = length(hemis);
 contrasts = {'sensory', 'WM'};
 N_contrasts = 2;
 
-move_mean_window = 2; % mm
+move_mean_window = 2.2; % mm
 
 save_out_image = true;
 
@@ -31,8 +31,9 @@ for hh = 1:N_hemis
     hemi = hemis{hh};
     for ss = 1:N_subjs
         subj = subjCodes{ss};
+        boundary = boundary_x(ss,hh);
         xs = xs_store{ss,hh};
-        xs = xs-min(xs); % align to start at 0
+        xs = xs-boundary; % align to start at 0
         if isempty(xs)
             continue;
         end
@@ -51,7 +52,7 @@ for hh = 1:N_hemis
     end
 end
 
-save([ROI '_' modality '_slopes.mat'], 'ROI', 'modality', 'slopes', 'hemis', 'subjCodes', 'contrasts');
+%save([ROI '_' modality '_slopes.mat'], 'ROI', 'modality', 'slopes', 'hemis', 'subjCodes', 'contrasts');
 
 %% Get means 
 means = squeeze(mean(move_means,1,'omitnan'));
@@ -67,54 +68,76 @@ slope_means = squeeze(mean(slopes,1,'omitnan'));
 
 %% Plot
 
-figure; 
+mean_xs = -24.5*move_mean_window:move_mean_window:24.5*move_mean_window
+mean_xs = squeeze(mean(bin_centers, 1, 'omitnan'))';
+
+f = figure; 
 subplot(3,2,1);
-plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,1,1,:))', '-o', 'Color', 'b');
+plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,1,1,:))', '-', 'Color', 'b');
 hold on; 
-plot(1:move_mean_window:100, squeeze(means(1,1,:)), '-*', 'Color', 'k', 'LineWidth',2);
+plot(mean_xs(:,1), squeeze(means(1,1,:)), '-*', 'Color', 'k', 'LineWidth',4);
 title('LH');
 ylabel('Sensory Drive T-stats');
+ylim([min(move_means(:,1,1,:),[],'all')-0.2, max(move_means(:,1,1,:),[],'all')+0.2])
+xlim([min(bin_centers(:,1,:),[],'all'), max(bin_centers(:,1,:),[],'all')])
 subplot(3,2,5);
-p1 = plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,1,1,:))', '-o', 'Color', 'b');
+p1 = plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,1,1,:))', '-', 'Color', 'b');
 hold on; 
-plot(1:move_mean_window:100, squeeze(means(1,1,:)), '-*', 'Color', 'k', 'LineWidth',2)
+plot(mean_xs(:,1), squeeze(means(1,1,:)), '-*', 'Color', 'k', 'LineWidth',4)
 ylabel('Both');
+ylim([min( [min(move_means(:,1,1,:),[],'all'), min(move_means(:,2,1,:),[],'all')] )-0.2, ...
+      max( [max(move_means(:,1,1,:),[],'all'), max(move_means(:,2,1,:),[],'all')] )+0.2 ])
+xlim([min(bin_centers(:,1,:),[],'all'), max(bin_centers(:,1,:),[],'all')])
 
 subplot(3,2,2);
-plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,1,2,:))', '-o', 'Color', 'b');
+plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,1,2,:))', '-', 'Color', 'b');
 hold on; 
-plot(1:move_mean_window:100, squeeze(means(1,2,:)), '-*', 'Color', 'k', 'LineWidth',2);
+plot(mean_xs(:,2), squeeze(means(1,2,:)), '-*', 'Color', 'k', 'LineWidth',4);
 title('RH');
+ylim([min(move_means(:,1,2,:),[],'all')-0.2, max(move_means(:,1,2,:),[],'all')+0.2])
+xlim([min(bin_centers(:,2,:),[],'all'), max(bin_centers(:,2,:),[],'all')])
 subplot(3,2,6);
-plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,1,2,:))', '-o', 'Color', 'b');
+plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,1,2,:))', '-', 'Color', 'b');
 hold on; 
+ylim([min( [min(move_means(:,1,2,:),[],'all'), min(move_means(:,2,2,:),[],'all')] )-0.2, ...
+      max( [max(move_means(:,1,2,:),[],'all'), max(move_means(:,2,2,:),[],'all')] )+0.2 ])
+xlim([min(bin_centers(:,2,:),[],'all'), max(bin_centers(:,2,:),[],'all')])
 
 subplot(3,2,3);
-plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,2,1,:))', '-o', 'Color', 'r');
+plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,2,1,:))', '-', 'Color', 'r');
 hold on; 
-plot(1:move_mean_window:100, squeeze(means(2,1,:)), '-*', 'Color', [0.4,0.4,0.4], 'LineWidth',2);
+plot(mean_xs(:,1), squeeze(means(2,1,:)), '-*', 'Color', [0.4,0.4,0.4], 'LineWidth',4);
 ylabel('WM T-stats')
+ylim([min(move_means(:,2,1,:),[],'all')-0.2, max(move_means(:,2,1,:),[],'all')+0.2])
+xlim([min(bin_centers(:,1,:),[],'all'), max(bin_centers(:,1,:),[],'all')])
 subplot(3,2,5);
-p2 = plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,2,1,:))', '-o', 'Color', 'r');
+p2 = plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,2,1,:))', '-', 'Color', 'r');
 hold on; 
-p3=plot(1:move_mean_window:100, squeeze(means(1,1,:)), '-*', 'Color', [0,0,0], 'LineWidth',2);
-p4=plot(1:move_mean_window:100, squeeze(means(2,1,:)), '-*', 'Color', [0.4,0.4,0.4], 'LineWidth',2);
+p3=plot(mean_xs(:,1), squeeze(means(1,1,:)), '-*', 'Color', [0,0,0], 'LineWidth',4);
+p4=plot(mean_xs(:,1), squeeze(means(2,1,:)), '-*', 'Color', [0.4,0.4,0.4], 'LineWidth',4);
 xlabel('Cortical Space (mm)');
+ylim([min( [min(move_means(:,2,1,:),[],'all'), min(move_means(:,1,1,:),[],'all')] )-0.2, ...
+      max( [max(move_means(:,2,1,:),[],'all'), max(move_means(:,1,1,:),[],'all')] )+0.2 ])
+xlim([min(bin_centers(:,1,:),[],'all'), max(bin_centers(:,1,:),[],'all')])
 legend([p1(1),p2(1),p3,p4], {'individual sensory', 'individual WM' 'mean sensory', 'mean WM'}, 'Position',[0.42682007778216,0.004234291861436,0.169856459330144,0.072005383580081]);
 
 subplot(3,2,4);
-plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,2,2,:))', '-o', 'Color', 'r');
+plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,2,2,:))', '-', 'Color', 'r');
 hold on; 
-plot(1:move_mean_window:100, squeeze(means(2,2,:)), '-*', 'Color', [0.4,0.4,0.4], 'LineWidth',2)
+plot(mean_xs(:,2), squeeze(means(2,2,:)), '-*', 'Color', [0.4,0.4,0.4], 'LineWidth',4)
+ylim([min(move_means(:,2,2,:),[],'all')-0.2, max(move_means(:,2,2,:),[],'all')+0.2])
+xlim([min(bin_centers(:,2,:),[],'all'), max(bin_centers(:,2,:),[],'all')])
 subplot(3,2,6);
-plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,2,2,:))', '-o', 'Color', 'r');
+plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,2,2,:))', '-', 'Color', 'r');
 hold on; 
-plot(1:move_mean_window:100, squeeze(means(1,2,:)), '-*', 'Color', 'k', 'LineWidth',2);
-plot(1:move_mean_window:100, squeeze(means(2,2,:)), '-*', 'Color', [0.4,0.4,0.4], 'LineWidth',2);
+plot(mean_xs(:,2), squeeze(means(1,2,:)), '-*', 'Color', 'k', 'LineWidth',4);
+plot(mean_xs(:,2), squeeze(means(2,2,:)), '-*', 'Color', [0.4,0.4,0.4], 'LineWidth',4);
 xlabel('Cortical Space (mm)');
+ylim([min( [min(move_means(:,1,2,:),[],'all'), min(move_means(:,2,2,:),[],'all')] )-0.2, ...
+      max( [max(move_means(:,1,2,:),[],'all'), max(move_means(:,2,2,:),[],'all')] )+0.2 ])
 
 sgtitle([replace(ROI,'_', ' ') ' | ' modality]);
-
+set(f,"Position",[1 1 782 1000]);
 if save_out_image
     print('-dpng', '-r600', ['tstat_lines_' ROI '_' modality '.png'])
 end
