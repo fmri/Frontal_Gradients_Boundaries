@@ -28,14 +28,14 @@ subj_ROIs = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data
 contrasts = {'vP-f', 'vA-vP'}; % which functional data contrasts to use (supramodal is 'aPvP-f', 'vAaA-vPaP')
 N_contrasts = length(contrasts);
 modality = 'visual'; % visual, auditory, supramodal, visaud
-ROI_name = 'midIFS'; % Which ROI to look at: preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, aIPS
+ROI_name = 'sup_lat_frontal'; % Which ROI to look at: preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, aIPS
 models = {'step', 'linear', 'hinge'};
 axis_method = 'average'; % regression (uses regression to find axis of largest difference) or average (uses weighted average of positive and negative pts to make line)
 axis_choice = 'step'; % step (use step function axis for all models) or individual (use best axis for each model individually)
 
-plot_fits = true; % plot out individual subj fits (debugging only unless you want a ~100 plots)
+plot_fits = false; % plot out individual subj fits (debugging only unless you want a ~100 plots)
 
-dist_thresh = 5; % mm
+dist_thresh = 5.1; % mm
 
 %% Load probabilistic ROI (flat patch) to use for determining group level axis of greatest change
 ROI_lh = read_patch([label_dir hemis{1} '.' ROI_name '_prob_thresh5_flat.patch']);
@@ -315,7 +315,7 @@ title(['Hinge Model R-squared | \mu=', num2str(round(mean(rsqr_hingewinners),2))
 sgtitle([replace(ROI_name,'_','-') ' ' modality ' | N = ' num2str(new_N) ', ' num2str(length(rsqr_hingewinners)) ' hinge wins']);
 
 %% Save 
-save([ROI_name '_' modality '_WMSMC_xs_Ts.mat'], 'subjCodes', 'hemis', 'xs_store', 'boundary_x', 'Ts_store', 'ROI_name', 'good_winning_direction');
+%save([ROI_name '_' modality '_WMSMC_xs_Ts.mat'], 'subjCodes', 'hemis', 'xs_store', 'boundary_x', 'Ts_store', 'ROI_name', 'good_winning_direction');
 
 
 %% Helper functions %%
