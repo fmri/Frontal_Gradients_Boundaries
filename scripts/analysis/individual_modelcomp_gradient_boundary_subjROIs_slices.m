@@ -25,17 +25,17 @@ group_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked
 subj_ROIs = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/subj_specific_01/';
 
 % Set models/methods used
-contrasts = {'vP-f', 'vA-vP'}; % which functional data contrasts to use (supramodal is 'aPvP-f', 'vAaA-vPaP')
+contrasts = {'aP-f', 'aA-aP'}; % which functional data contrasts to use (supramodal is 'aPvP-f', 'vAaA-vPaP')
 N_contrasts = length(contrasts);
-modality = 'visual'; % visual, auditory, supramodal, visaud
-ROI_name = 'sup_lat_frontal'; % Which ROI to look at: preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, aIPS
+modality = 'auditory'; % visual, auditory, supramodal, visaud
+ROI_name = 'aIPS'; % Which ROI to look at: preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, aIPS
 models = {'step', 'linear', 'hinge'};
 axis_method = 'average'; % regression (uses regression to find axis of largest difference) or average (uses weighted average of positive and negative pts to make line)
 axis_choice = 'step'; % step (use step function axis for all models) or individual (use best axis for each model individually)
 
 plot_fits = false; % plot out individual subj fits (debugging only unless you want a ~100 plots)
 
-dist_thresh = 5.1; % mm
+dist_thresh = 4.8; % mm
 
 %% Load probabilistic ROI (flat patch) to use for determining group level axis of greatest change
 ROI_lh = read_patch([label_dir hemis{1} '.' ROI_name '_prob_thresh5_flat.patch']);
@@ -86,6 +86,7 @@ winning_rsquare = nan(N_subjs, num_hemis); % r-square of winning model
 linear_xdist = nan(N_subjs, num_hemis); % distance of hinge in hinge model (mm)
 BICs = nan(N_subjs, num_hemis, 3); % Raw BICs for each model
 change_direction = nan(N_subjs, num_hemis, 3); % 1 for expected direction (increase along X axis), else 0
+slopes = nan(N_subjs, num_hemis); 
 
 % Parameters for how to rotate axis when fitting
 deg_step = 1; % degrees
@@ -150,6 +151,7 @@ for hh = 1:num_hemis
 
         [winning_angle, winning_angle_model]= individual_find_axis_noslice('step', xs, ys, Ts, group_data_curr, angles);
         winning_angles(ss,hh) = winning_angle; 
+
         [metrics_step, ~, ~, xs_new, ys_new, ~, bins_step] = fit_GB_model_slices('step', xs, ys, Ts, group_data_curr, winning_angle);
         xs_store{ss,hh} = xs_new;
         boundary_x(ss,hh) = winning_angle_model.x1; 
@@ -228,6 +230,7 @@ for hh = 1:num_hemis
         % If hinge model is the winner, check whether the linear piece is large enough to cross multiple voxels
         if ind==3
             linear_xdist(ss,hh) = mean((metrics_hinge.p2 + metrics_hinge.p1) - metrics_hinge.p1, 'omitnan', 'Weights', metrics_hinge.numobs); % just take difference between end of hinge and beginning of hinge on x axis
+            slopes(ss,hh) = mean(metrics_hinge.p4 - metrics_hinge.p3, 'omitnan', 'Weights', metrics_hinge.numobs)/linear_xdist(ss,hh); % and record the slope for later analysis
         end
 
         if plot_fits % make overall title for 2x2 fit plot
@@ -251,7 +254,8 @@ end
 %% Basic counts to compare models
 gradient_wins = winning_model==3 & winning_rsquare>0.1 & model_comp<-10 & linear_xdist>dist_thresh & change_direction(:,:,3)==1;
 total_gradient_win = sum(gradient_wins)
-total_boundary_win = sum(( (winning_model==1 & model_comp<-10 & change_direction(:,:,1)==1) | (winning_model==3 & linear_xdist<=dist_thresh & change_direction(:,:,3)==1) ) & winning_rsquare>0.1) 
+boundary_wins = ( (winning_model==1 & model_comp<-10 & change_direction(:,:,1)==1) | (winning_model==3 & linear_xdist<=dist_thresh & change_direction(:,:,3)==1) ) & winning_rsquare>0.1;
+total_boundary_win = sum(boundary_wins)
 total_linear_win = sum(winning_model==2 & winning_rsquare>0.1 & model_comp<-10 & change_direction(:,:,2)==1) 
 weak_evidence = sum( (~(winning_model==3 & linear_xdist<=dist_thresh) & model_comp>=-10) & winning_rsquare>0.1 & good_winning_direction==1)
 bad_direction = sum(good_winning_direction==0 & winning_rsquare>0.1)
@@ -260,6 +264,10 @@ no_ROI = sum(isnan(winning_model))
 
 total = (N_subjs*2) - sum(isnan(winning_model), 'all')
 total_check = sum([total_gradient_win,total_boundary_win,total_linear_win,weak_evidence,bad_direction,r2_rejects])
+
+slopes(~gradient_wins) = nan;
+mean_slope = mean(slopes, 'omitnan');
+SE_slope = std(slopes,'omitnan')./sqrt(total_gradient_win);
 
 %% Group plots/tests
 BIC_allhemis = reshape(BICs, [size(BICs,1)*size(BICs,2), size(BICs,3)]); % collapse hemispheres
@@ -286,8 +294,8 @@ xlim([-2,4]); xticks([]);
 title({['Step vs Hinge Model | \mu=' num2str(round(m,2)) ' | SE=' num2str(round(SE,2)) ]})
 
 % Plot hinge distances
-xdists_hingewinners = linear_xdist(winning_model==3 & change_direction(:,:,3)==1);
-xdist_hingewinners_lh = linear_xdist(winning_model(:,1)==3 & change_direction(:,1,3)==1,1);
+xdists_hingewinners = linear_xdist(good_winning_direction==1);
+xdist_hingewinners_lh = linear_xdist(good_winning_direction(:,1)==1,1);
 m = mean(xdists_hingewinners);
 SE = std(xdists_hingewinners)/sqrt(length(xdists_hingewinners));
 subplot(1,3,2);
@@ -301,6 +309,7 @@ title({['Hinge Length | \mu=' num2str(round(mean(xdists_hingewinners),2)) '| SE=
 % Plot hinge R squareds
 rsqr_hingewinners = winning_rsquare(gradient_wins & change_direction(:,:,3)==1);
 rsqr_hingewinners_lh = winning_rsquare(gradient_wins(:,1)==1 & change_direction(:,1,3)==1,1);
+rsqr_boundwinners_lh = winning_rsquare(boundary_wins(:,1)==1 & good_winning_direction(:,1)==1,1);
 m = mean(rsqr_hingewinners);
 SE = std(rsqr_hingewinners/sqrt(length(rsqr_hingewinners)));
 subplot(1,3,3);
@@ -315,8 +324,8 @@ title(['Hinge Model R-squared | \mu=', num2str(round(mean(rsqr_hingewinners),2))
 sgtitle([replace(ROI_name,'_','-') ' ' modality ' | N = ' num2str(new_N) ', ' num2str(length(rsqr_hingewinners)) ' hinge wins']);
 
 %% Save 
-%save([ROI_name '_' modality '_WMSMC_xs_Ts.mat'], 'subjCodes', 'hemis', 'xs_store', 'boundary_x', 'Ts_store', 'ROI_name', 'good_winning_direction');
-
+save([ROI_name '_' modality '_WMSMC_xs_Ts.mat'], 'subjCodes', 'hemis', 'xs_store', 'boundary_x', 'Ts_store', 'ROI_name', 'good_winning_direction', 'boundary_wins', 'gradient_wins');
+%save([ROI_name '_' modality '_r2_hingelength.mat'], 'subjCodes', 'hemis', 'gradient_wins', 'boundary_wins', 'good_winning_direction', 'winning_rsquare', 'linear_xdist');
 
 %% Helper functions %%
 function LL= loglikelihood(num_obs, rmse, sse)

@@ -10,14 +10,14 @@ ccc;
 
 %% Initialize Key Variables
 ROI = 'preSMA'; %preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, aIPS
-modality = 'auditory'; % auditory, visual, supramodal
+modality = 'visual'; % auditory, visual, supramodal
 load(['/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/individual_ROI_tstats/' ROI '_' modality '_WMSMC_xs_Ts.mat'],...
-    'Ts_store', 'subjCodes', 'hemis', 'xs_store', 'boundary_x');
+    'Ts_store', 'subjCodes', 'hemis', 'xs_store', 'boundary_x', 'good_winning_direction', 'gradient_wins', 'boundary_wins');
 N_subjs = length(subjCodes);
 N_hemis = length(hemis);
 contrasts = {'sensory', 'WM'};
 N_contrasts = 2;
-
+colors = nan(N_subjs,N_hemis,3);
 move_mean_window = 2.2; % mm
 
 save_out_image = true;
@@ -32,6 +32,15 @@ for hh = 1:N_hemis
     for ss = 1:N_subjs
         subj = subjCodes{ss};
         boundary = boundary_x(ss,hh);
+        if gradient_wins(ss,hh)
+            colors(ss,hh,:) = [1 0 0];
+        elseif boundary_wins(ss,hh)
+            colors(ss,hh,:) = [0 0.2 1];
+        elseif good_winning_direction(ss,hh)==0
+            colors(ss,hh,:) = [0.7 0.7 0.7];
+        else
+            colors(ss,hh,:) = [0.7 0.7 0.7];            
+        end
         xs = xs_store{ss,hh};
         xs = xs-boundary; % align to start at 0
         if isempty(xs)
@@ -39,9 +48,9 @@ for hh = 1:N_hemis
         end
         bin_edges = min(xs):move_mean_window:max(xs);
         bin_centers(ss,hh,1:length(bin_edges)-1) = bin_edges(1:end-1) + (diff(bin_edges)/2);
-        Ts_WM = Ts_store{ss,1,hh};
+        Ts_WM = Ts_store{ss,2,hh};
         Ts_WM(Ts_WM<0) = 0;
-        Ts_SMC = Ts_store{ss,2,hh};
+        Ts_SMC = Ts_store{ss,1,hh};
         Ts_SMC(Ts_WM<0) = 0;
         Ts_diff = Ts_WM - Ts_SMC;
         coefs = [xs, ones(length(xs),1)] \ Ts_diff'; % linear regression on only x coordinates
@@ -73,8 +82,10 @@ mean_xs = squeeze(mean(bin_centers, 1, 'omitnan'))';
 
 f = figure; 
 subplot(1,2,1);
-plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,1,:))', '-', 'Color', 'b');
-hold on; 
+for pp = 1:N_subjs
+    plot(squeeze(bin_centers(pp,1,:))', squeeze(move_means(pp,1,:))', '-', 'Color', squeeze(colors(pp,1,:)), 'LineWidth',1.25);
+    hold on; 
+end
 plot(mean_xs(:,1), squeeze(means(1,:)), '-*', 'Color', 'k', 'LineWidth',4);
 title('LH');
 ylabel('WM-Sensory T-stats');
@@ -82,8 +93,10 @@ ylim([min(move_means(:,1,:),[],'all')-0.2, max(move_means(:,1,:),[],'all')+0.2])
 xlim([min(bin_centers(:,1,:),[],'all'), max(bin_centers(:,1,:),[],'all')])
 
 subplot(1,2,2);
-plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,2,:))', '-', 'Color', 'b');
-hold on; 
+for pp = 1:N_subjs
+    plot(squeeze(bin_centers(pp,2,:))', squeeze(move_means(pp,2,:))', '-', 'Color', squeeze(colors(pp,2,:)), 'LineWidth',1.25);
+    hold on; 
+end
 plot(mean_xs(:,2), squeeze(means(2,:)), '-*', 'Color', 'k', 'LineWidth',4);
 title('RH');
 ylim([min(move_means(:,2,:),[],'all')-0.2, max(move_means(:,2,:),[],'all')+0.2])
@@ -91,7 +104,6 @@ xlim([min(bin_centers(:,2,:),[],'all'), max(bin_centers(:,2,:),[],'all')])
 
 fontsize(14,"points")
 sgtitle([replace(ROI,'_', ' ') ' | ' modality]);
-%set(f,"Position",[1 1 782 1000]);
 if save_out_image
     print('-dpng', '-r600', ['tstat_diff_lines_' ROI '_' modality '.png'])
 end

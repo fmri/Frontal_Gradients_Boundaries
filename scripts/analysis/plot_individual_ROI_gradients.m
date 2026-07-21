@@ -9,10 +9,10 @@ addpath(genpath('/projectnb/somerslab/tom/functions/'));
 ccc;
 
 %% Initialize Key Variables
-ROI = 'sup_lat_frontal'; %preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, 
-modality = 'auditory'; % auditory, visual, supramodal
+ROI = 'preSMA'; %preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, 
+modality = 'visual'; % auditory, visual, supramodal
 load(['/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/individual_ROI_tstats/' ROI '_' modality '_WMSMC_xs_Ts.mat'],...
-    'Ts_store', 'subjCodes', 'hemis', 'xs_store', 'boundary_x');
+    'Ts_store', 'subjCodes', 'hemis', 'xs_store', 'boundary_x', 'good_winning_direction', 'gradient_wins', 'boundary_wins');
 N_subjs = length(subjCodes);
 N_hemis = length(hemis);
 contrasts = {'sensory', 'WM'};
@@ -34,7 +34,7 @@ for hh = 1:N_hemis
         boundary = boundary_x(ss,hh);
         xs = xs_store{ss,hh};
         xs = xs-boundary; % align to start at 0
-        if isempty(xs)
+        if isempty(xs) | 
             continue;
         end
         bin_edges = min(xs):move_mean_window:max(xs);
@@ -68,12 +68,12 @@ slope_means = squeeze(mean(slopes,1,'omitnan'));
 
 %% Plot
 
-mean_xs = -24.5*move_mean_window:move_mean_window:24.5*move_mean_window
+%mean_xs = -24.5*move_mean_window:move_mean_window:24.5*move_mean_window
 mean_xs = squeeze(mean(bin_centers, 1, 'omitnan'))';
 
 f = figure; 
 subplot(3,2,1);
-plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,1,1,:))', '-', 'Color', 'b');
+plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,1,1,:))', '-', 'Color', '#32CD32');
 hold on; 
 plot(mean_xs(:,1), squeeze(means(1,1,:)), '-*', 'Color', 'k', 'LineWidth',4);
 title('LH');
@@ -81,7 +81,7 @@ ylabel('Sensory Drive T-stats');
 ylim([min(move_means(:,1,1,:),[],'all')-0.2, max(move_means(:,1,1,:),[],'all')+0.2])
 xlim([min(bin_centers(:,1,:),[],'all'), max(bin_centers(:,1,:),[],'all')])
 subplot(3,2,5);
-p1 = plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,1,1,:))', '-', 'Color', 'b');
+p1 = plot(squeeze(bin_centers(:,1,:))', squeeze(move_means(:,1,1,:))', '-', 'Color', '#32CD32');
 hold on; 
 plot(mean_xs(:,1), squeeze(means(1,1,:)), '-*', 'Color', 'k', 'LineWidth',4)
 ylabel('Both');
@@ -90,14 +90,14 @@ ylim([min( [min(move_means(:,1,1,:),[],'all'), min(move_means(:,2,1,:),[],'all')
 xlim([min(bin_centers(:,1,:),[],'all'), max(bin_centers(:,1,:),[],'all')])
 
 subplot(3,2,2);
-plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,1,2,:))', '-', 'Color', 'b');
+plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,1,2,:))', '-', 'Color', '#32CD32');
 hold on; 
 plot(mean_xs(:,2), squeeze(means(1,2,:)), '-*', 'Color', 'k', 'LineWidth',4);
 title('RH');
 ylim([min(move_means(:,1,2,:),[],'all')-0.2, max(move_means(:,1,2,:),[],'all')+0.2])
 xlim([min(bin_centers(:,2,:),[],'all'), max(bin_centers(:,2,:),[],'all')])
 subplot(3,2,6);
-plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,1,2,:))', '-', 'Color', 'b');
+plot(squeeze(bin_centers(:,2,:))', squeeze(move_means(:,1,2,:))', '-', 'Color', '#32CD32');
 hold on; 
 ylim([min( [min(move_means(:,1,2,:),[],'all'), min(move_means(:,2,2,:),[],'all')] )-0.2, ...
       max( [max(move_means(:,1,2,:),[],'all'), max(move_means(:,2,2,:),[],'all')] )+0.2 ])

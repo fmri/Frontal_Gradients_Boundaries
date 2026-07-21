@@ -21,7 +21,9 @@ N_contrasts = length(contrasts);
 MD_ROI_names = {'8BM_ROI', '8C_ROI', 'IFJp_ROI', 'p9-46v_ROI', 'a9-46v_ROI', 'i6-8_ROI', 'AVI_ROI'};
 N_MD_ROIs = length(MD_ROI_names);
 
-dice_coefs = nan(N_hemis, N_modalities, N_contrasts);
+prob_ROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/probabilistic_allROIs/';
+prob_ROIs = {'preSMA', 'inf_lat_frontal', 'aINS', 'sup_lat_frontal', 'midIFS'};
+N_prob_ROIs = length(prob_ROIs);
 
 N_vertices = 163842;
 
@@ -43,7 +45,7 @@ MD_ROI_masks = squeeze(sum(MD_ROI_masks,2));
 
 %% Loop over hemis/ROIs/modalities/contrasts and calculate dice coefs
 probmap_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
-dice_coefs = nan(N_hemis, N_modalities, N_contrasts);
+dice_coefs = nan(N_hemis, N_modalities, N_contrasts, N_prob_ROIs);
 
 for cc = 1:N_contrasts
     contrast = contrasts{cc};
@@ -53,13 +55,17 @@ for cc = 1:N_contrasts
             hemi = hemis{hh};
             probmap = MRIread([probmap_dir hemi '_original_' contrast '_' modality '.nii']);
             probmap_mask = probmap.vol>=5;
-            probmap_vertices = sum(probmap_mask);
             MD_ROI_mask = MD_ROI_masks(hh,:);
-            overlap = probmap_mask & MD_ROI_mask;
-            dice_coefs(hh,mm,cc) = 2*sum(overlap) / (sum(probmap_vertices) + sum(MD_ROI_mask));
-            disp([modality ' ' contrast ' ' hemi ': ' num2str(dice_coefs(hh,mm,cc))]);
+            for rr = 1:N_prob_ROIs
+                prob_ROI = readtable([prob_ROI_dir hemi '.' prob_ROIs{rr} '_prob_thresh5.label'], 'FileType','text');
+                prob_ROI_mask = ismember(1:N_vertices, (prob_ROI{:,1}+1));
+                probmask_inROI = prob_ROI_mask & probmap_mask;
+                MD_ROI_inROI = MD_ROI_mask & prob_ROI_mask;
+                overlap = probmask_inROI & MD_ROI_mask;
+                dice_coefs(hh,mm,cc,rr) = 2*sum(overlap) / (sum(probmask_inROI) + sum(MD_ROI_inROI));
+                disp([prob_ROIs{rr} ' ' modality ' ' contrast ' ' hemi ': ' num2str(dice_coefs(hh,mm,cc,rr))]);
+            end
         end
     end
 end
-
 
