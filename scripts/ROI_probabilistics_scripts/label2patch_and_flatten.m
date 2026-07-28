@@ -12,17 +12,15 @@ ccc;
 ROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/probabilistic_allROIs/';
 patch_tempdir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/recons/fsaverage/surf/';
 hemis = {'lh', 'rh'};
-% ROI_names = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', ...
-%              'parietal_opercular', 'aIPS', 'ms_post_STSG', 'VOT', 'cIPS', 'LOT', 'pIPS', 'VO', 'DO'};
-% ROI_names = {'visaud_sPCS_tgPCS_interface', 'visaud_tgPCS_iPCS_interface',...
-%              'visaud_iPCS_CO_interface', 'visaud_iPCS_cIFSG_interface',...
-%              'visaud_cIFSG_midIFS_interface'};
-ROI_names = {'motor_confound'};
+ROI_names = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', ...
+             'parietal_opercular', 'aIPS', 'ms_post_STSG', 'VOT', 'cIPS', 'LOT', 'pIPS', 'VO', 'DO'};
+
 
 N_hemis = length(hemis);
 N_ROIs = length(ROI_names);
 N_fnames = N_ROIs*N_hemis;
 
+% Collect all relevant label filenames
 fnames = {};
 for hh = 1:N_hemis
     hemi = hemis{hh};

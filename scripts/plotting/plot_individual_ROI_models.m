@@ -1,6 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% The purpose of this script is to visualize the single subject winning
-%%% gradient/boundary models along the axis of greatest difference of an ROI for each subj
+%%% gradient/boundary models along the axis of greatest difference of an 
+%%% ROI for each subj
 %%%
 %%% Tom Possidente - July 2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -30,7 +31,7 @@ for hh = 1:N_hemis
             continue;
         end
 
-        if boundary_wins(ss,hh)
+        if boundary_wins(ss,hh) % color by gradient/boundary/inconclusive wins
             color = [0 0.2 1];
             style = '-';
         elseif gradient_wins(ss,hh)

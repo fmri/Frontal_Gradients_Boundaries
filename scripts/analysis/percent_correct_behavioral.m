@@ -16,14 +16,14 @@ taskname = 'x1WayLocalizer';
 subjDf = load_subjInfo();
 subjDf_cut = subjDf(~strcmp(subjDf.('spacetimeRuns'),''),:);
 subjCodes = subjDf_cut.subjCode;
-subjCodes = subjCodes(~ismember(subjCodes, {'RR', 'PP', 'MM', 'AH'}));
+subjCodes = subjCodes(~ismember(subjCodes, {'RR', 'PP', 'MM', 'AH'})); % remove excluded subjs
 n = length(subjCodes);
 
 %% Loop through subjs and get % correct
 behavioral_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/behavioral/behavioral/';
 modality_names = {'visual', 'auditory', 'tactile'};
 n_conditions = 2*length(modality_names);
-correct_colnames = {'even_trial_responseCorrect', 'odd_trial_responseCorrect'};
+correct_colnames = {'even_trial_responseCorrect', 'odd_trial_responseCorrect'}; % column names with correct/incorrect info
 perc_correct_all = nan(n,n_conditions);
 n_cond = nan(n,n_conditions);
 perc_correct_byrun = nan(n,2,6);
@@ -46,7 +46,7 @@ for ss = 1:n
 
     files = {dir([behavioral_dir subjID]).name};
     if isempty(files)
-        disp(['No behavrioal data files for subj ' subjCode]);
+        disp(['No behavioral data files for subj ' subjCode]);
         continue
     end
 

@@ -19,7 +19,7 @@ function [gof, info, winning_angle, xs_out, ys_out, model_out] = fit_GB_model(ty
     if strcmp(type, 'step')
         model = fittype('x2*(x<x1) + x3*(x>=x1)',... % step function model
                         'dependent', 'z',...
-                        'independent', {'x'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
+                        'independent', {'x'}, ... 
                         'coefficients', {'x1','x2', 'x3'}); % x1 is step location, x2 is pre-step, x3 is post-step
         
         for aa = 1:length(angles) % rotate x-axis iteratively and fit each time to find best fit
@@ -44,7 +44,7 @@ function [gof, info, winning_angle, xs_out, ys_out, model_out] = fit_GB_model(ty
     elseif strcmp(type, 'linear')
         model = fittype('x*a + b',... % linear function
             'dependent', 'z',...
-            'independent', {'x'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
+            'independent', {'x'}, ... 
             'coefficients', {'a','b'}); % a is slope, b is intercept
     
         for aa = 1:length(angles) % rotate x-axis iteratively and fit each time to find best fit
@@ -73,13 +73,10 @@ function [gof, info, winning_angle, xs_out, ys_out, model_out] = fit_GB_model(ty
         end
     
     elseif strcmp(type, 'hinge')
-        % model = fittype('a*(x < x1) + b*(x > x2) + ( a + ( (b-a)/(x2-x1)  * (x-x1) ) ) * ( (x > x1) & (x < x2) )', ... % piecewise function, constant from -Inf to x1, linear from x1 to x2, constant from x2 to Inf. Must include y in the function even if it has no mathematical effect
-        %     'dependent', 'z',...
-        %     'independent', {'x'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
-        %     'coefficients', {'a','b','x1', 'x2'}); % a is z from -Inf to x1, b is z from x2 to Inf, x1 is where to start linear piece, x2 is where to end linear piece
+
         model = fittype('a*(x < x1) + b*(x > (x1+x2)) + ( a + ( (b-a)/((x1+x2)-x1)  * (x-x1) ) ) * ( (x > x1) & (x < (x1+x2)) )', ... % piecewise function, constant from -Inf to x1, linear from x1 to x2, constant from x2 to Inf. Must include y in the function even if it has no mathematical effect
                 'dependent', 'z',...
-                'independent', {'x'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
+                'independent', {'x'}, ... 
                 'coefficients', {'a','b','x1', 'x2'}); % a is z from -Inf to x1, b is z from x2 to Inf, x1 is where to start linear piece, x2 is where to end linear piece
 
         for aa = 1:length(angles) % rotate x-axis iteratively and fit each time to find best fit
@@ -88,26 +85,14 @@ function [gof, info, winning_angle, xs_out, ys_out, model_out] = fit_GB_model(ty
             ys_new = xs * sin(theta) + ys * cos(theta);
     
             % Calculate initial guesses for gradient model parameters using group-level data
-            %startpoint_guesses = [max([mean([group_data(group_data<0);0]), min(group_data)]), min([mean([group_data(group_data>0);0]), max(group_data)]), prctile(xs_new, 25), prctile(xs_new, 75)]; % estimates for
             startpoint_guesses = [max([mean([group_data(group_data<0);0]), min(group_data)]), min([mean([group_data(group_data>0);0]), max(group_data)]), prctile(xs_new, 25), prctile(xs_new, 50)]; % estimates for
-            % lower_bounds = [-10, -10, min(xs_new), min(xs_new)];
             lower_bounds = [-10, -10, min(xs_new), 0];
             upper_bounds = [10, 10, max(xs_new), max(xs_new)-min(xs_new)];
-            %upper_bounds = [10, 10, max(xs_new), max(xs_new)];
-
     
             [fit_res_curr, gof_curr, info_curr] = fit(xs_new, Ts, model, ...
                 'StartPoint', startpoint_guesses,...
                 'Lower', lower_bounds,...
                 'Upper', upper_bounds); % fit model
-    
-            % if fit_res_curr.x2< fit_res_curr.x1 % Invalid fit, cannot start the hinge before you end it, retry with bounds that force x1<x2
-            %     [fit_res_curr, gof_curr, info_curr] = fit(xs_new, Ts, model, ...
-            %         'StartPoint', startpoint_guesses,...
-            %         'Lower', [lower_bounds(1), lower_bounds(2), lower_bounds(3), fit_res_curr.x1],...
-            %         'Upper', [upper_bounds(1), upper_bounds(2), fit_res_curr.x2, upper_bounds(3)]);
-            %     assert(fit_res_curr.x2>fit_res_curr.x1, 'invalid hinge fit');
-            % end
     
             if best_rsquare<gof_curr.rsquare
                 best_rsquare = gof_curr.rsquare;

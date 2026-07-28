@@ -1,6 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% The purpose of this script is to visualize the T-stats along the axis of
-%%% greatest difference of an ROI for each subj
+%%% The purpose of this script is to visualize the T-stats diffference 
+%%% between WM and sensory contrasts along the axis of greatest difference 
+%%% of an ROI for each subj
 %%%
 %%% Tom Possidente - June 2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -17,12 +18,13 @@ N_subjs = length(subjCodes);
 N_hemis = length(hemis);
 contrasts = {'sensory', 'WM'};
 N_contrasts = 2;
+
 colors = nan(N_subjs,N_hemis,3);
 move_mean_window = 2.2; % mm
 
 save_out_image = false;
 
-%% Loop over subjs/hemis and calculate movmean
+%% Loop over subjs/hemis and calculate moving mean across ROI
 bin_centers = nan(N_subjs, N_hemis, 50);
 move_means = nan(N_subjs, N_hemis, 50);
 slopes = nan(N_subjs, N_hemis);
@@ -32,7 +34,7 @@ for hh = 1:N_hemis
     for ss = 1:N_subjs
         subj = subjCodes{ss};
         boundary = boundary_x(ss,hh);
-        if gradient_wins(ss,hh)
+        if gradient_wins(ss,hh) % color by gradient/boundary/inconclusive
             colors(ss,hh,:) = [1 0 0];
         elseif boundary_wins(ss,hh)
             colors(ss,hh,:) = [0 0.2 1];
@@ -42,14 +44,14 @@ for hh = 1:N_hemis
             colors(ss,hh,:) = [0.7 0.7 0.7];            
         end
         xs = xs_store{ss,hh};
-        xs = xs-boundary; % align to start at 0
+        xs = xs-boundary; % align to boundary point of boundary model on x-axis
         if isempty(xs)
             continue;
         end
         bin_edges = min(xs):move_mean_window:max(xs);
         bin_centers(ss,hh,1:length(bin_edges)-1) = bin_edges(1:end-1) + (diff(bin_edges)/2);
         Ts_WM = Ts_store{ss,2,hh};
-        Ts_WM(Ts_WM<0) = 0;
+        Ts_WM(Ts_WM<0) = 0; % clip Tstats at 0 for interpretability of difference T-stats
         Ts_SMC = Ts_store{ss,1,hh};
         Ts_SMC(Ts_WM<0) = 0;
         Ts_diff = Ts_WM - Ts_SMC;
@@ -65,7 +67,7 @@ end
 
 %save([ROI '_' modality '_slopes.mat'], 'ROI', 'modality', 'slopes', 'hemis', 'subjCodes', 'contrasts');
 
-%% Get means 
+%% Get mean of all subjs
 means = squeeze(mean(move_means,1,'omitnan'));
 
 for hh = 1:N_hemis

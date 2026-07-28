@@ -19,7 +19,7 @@ hemis = {'lh', 'rh'};
 subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI', 'SL'};
 N = length(subjCodes);
 
-contrasts = {'vAvP-f', 'aAaP-f'};
+contrasts = {'vAvP-f', 'aAaP-f'}; % using WM&SMC - Fixation 
 N_contrasts = length(contrasts);
 contrast_names = {'visual', 'auditory', 'supramodal'};
 save_out_ROIs = false;
@@ -71,19 +71,19 @@ for ss = 1:N
                 contrast = contrasts{cc};
                 data = MRIread([data_dir subjCode '/localizer/localizer_contrasts_' hemi '/' contrast '/sig.nii.gz']);
                 data_thresh_mask = data.vol >= pval_thresh;
-                final_ROImask = prob_ROI_mask & data_thresh_mask';
+                final_ROImask = prob_ROI_mask & data_thresh_mask'; % vertices in probabilistic mask that are also significant in this contrast
                 final_ROImasks(:,cc) = final_ROImask;
                 ROI_size(ss,hh,rr,cc) = sum(final_ROImask);
-                ROI_good_persubj(ss,hh,rr,cc) = sum(final_ROImask) >= (sum(prob_ROI_mask)*ROI_vertices_thresh); % are the number of ROIs more than 10% of the search space?
+                ROI_good_persubj(ss,hh,rr,cc) = sum(final_ROImask) >= (sum(prob_ROI_mask)*ROI_vertices_thresh); % are the number of vertices more than 10% of the search space?
 
                 % Create ROI
                 if ROI_good_persubj(ss,hh,rr,cc)
-                    cortex_label_inds = vertex_inds(final_ROImask) - 1;
+                    cortex_label_inds = vertex_inds(final_ROImask) - 1; % indices are off by 1
                     cortex_label_mask = ismember(cortex_labels{hh}{:,1}, cortex_label_inds);
                     assert(length(cortex_label_inds)==sum(cortex_label_mask), 'number of vertices in ROI mask does not match number of vertices in label');
                     label = table2array(cortex_labels{hh}(cortex_label_mask,:));
                     label_fname = [ROI_outdir hemi '.' ROI_name '_' contrast_names{cc} '_' subjCode '.label'];
-                    if ~isfile(label_fname) & save_out_ROIs
+                    if ~isfile(label_fname) & save_out_ROIs % save label file
                         label_file = fopen(label_fname,'w');
                         fprintf(label_file, ['#!ascii label  , from subject  vox2ras=TkReg\n' num2str(size(label,1)) '\n']);
                         writematrix(label, label_fname, 'Delimiter', 'tab', 'WriteMode', 'append', 'FileType', 'text');

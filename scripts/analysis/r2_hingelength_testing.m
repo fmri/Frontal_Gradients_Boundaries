@@ -12,8 +12,8 @@ ccc;
 data_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/r2_hingelength_data/';
 ROIs = {'preSMA', 'inf_lat_frontal', 'aINS', 'sup_lat_frontal', 'aIPS', 'midIFS'};
 N_ROIs = length(ROIs);
-ROI_hemis_vis = {'LR', 'LR', 'L', 'L', '', 'L'};
-ROI_hemis_aud = {'LR', 'LR', 'LR', 'L', 'R', 'L'};
+ROI_hemis_vis = {'LR', 'LR', 'L', 'L', '', 'L'}; % hemispheres being examined for each ROI (for visual)
+ROI_hemis_aud = {'LR', 'LR', 'LR', 'L', 'R', 'L'}; % hemispheres being examined for each ROI (for auditory)
 ROI_hemis = {ROI_hemis_aud; ROI_hemis_vis};
 modalities = {'auditory', 'visual'};
 N_modalities = length(modalities);
@@ -72,7 +72,7 @@ for rr = 1:N_ROIs
         disp([ROI ' ' modality])
 
         
-        rsqr_table.subj = categorical(rsqr_table.subj);
+        rsqr_table.subj = categorical(rsqr_table.subj); % make these variables categorical instead of continuous
         rsqr_table.hemi = categorical(rsqr_table.hemi);
         rsqr_table.rsqr = rsqr_table.rsqr - 0.1; % shift down 0.1 so testing against 0 is the same as testing against 0.1 (null hypothesis)
         hinge_table.subj = categorical(hinge_table.subj);
@@ -82,7 +82,7 @@ for rr = 1:N_ROIs
         if length(ROI_hemi)==2
             rsqr_model = fitlme(rsqr_table, 'rsqr ~ 1 + (1|hemi) + (1|subj)');
             hinge_model = fitlme(hinge_table, 'hinge ~ 1 + (1|hemi) + (1|subj)');
-        else
+        else % if there aren't 2 hemispheres included, there are not multiple observations per subj so we don't need random effects 
             rsqr_model = fitlme(rsqr_table, 'rsqr ~ 1');
             hinge_model = fitlme(hinge_table, 'hinge ~ 1');
         end

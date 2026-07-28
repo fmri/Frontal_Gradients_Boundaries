@@ -22,24 +22,15 @@ switch keyword
     case {'visual', 'vis'}
         ROI_names = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', ...
                      'aIPS', 'VOT', 'cIPS', 'LOT', 'pIPS', 'VO', 'DO'};
-        perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
-        unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
     case {'auditory', 'aud'}
         ROI_names = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', ...
                      'parietal_opercular', 'aIPS', 'ms_post_STSG', 'cIPS'};
-        perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
-        unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
     case {'supramodal', 'supra'}
         ROI_names = {'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal', 'aIPS', 'cIPS'};
-        perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
-        unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
-    case {'VisAud', 'visaud'}
-        ROI_names = {'aMFG', 'midIFS', 'aINS', 'preSMA', 'inf_lat_frontal', 'sup_lat_frontal',...
-                     'midINS', 'parietal_opercular', 'aIPS', 'ms_post_STSG', 'VOT', 'cIPS', 'MT',...
-                     'LOT', 'DO'};
-        perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_VisAud/';
-        unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/VisAud_nonpermuted_probabilistics/';
 end
+
+perm_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
+unpermuted_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
 
 N_iterations = 10000;
 N_hemis = length(hemis);
@@ -70,7 +61,7 @@ for cc = 1:N_contrasts
             label_path = [ROI_dir hemi '.' ROI_name '_prob_thresh5.label'];
             label = readtable(label_path, 'FileType', 'text');
 
-            % Get #subj in vertices in both patch and label (there may be some negligable differences due to imperfect cutting
+            % Get #subj in vertices in both patch and label (there may be some negligable differences due to imperfect cutting)
             inds_label = label{:,1};
             patch_in_label = ismember(inds_label, patch.ind);
             perc_labelinpatch = sum(patch_in_label)/length(inds_label);
@@ -201,7 +192,7 @@ for hh = 1:N_hemis
     end
 end
 
-%% Compare direction and distance between COMs
+%% Compare distance between COMs
 tic;
 coord_diffs = table();
 
@@ -214,17 +205,6 @@ for ii = 1:N_iterations
             counter = counter + 1;
             COM_g1 = squeeze(COMs(rr,1,hh,ii,:));
             COM_g2 = squeeze(COMs(rr,2,hh,ii,:));
-
-            if plotting_diagnostics & strcmp(ROI_name, 'iPCS')
-                patch_path = [ROI_dir hemi '.' ROI_name '_prob_thresh5_flat.patch'];
-                patch = read_patch(patch_path);
-                figure;
-                scatter(patch.x, patch.y); hold on;
-                scatter(COM_g1(1), COM_g1(2), 25, 'filled');
-                scatter(COM_g2(1), COM_g2(2), 25, 'filled');
-                legend({'coordinates', 'WM peak', 'SMC peak'});
-                title([hemis{hh} ' ' ROI_name ' iter' num2str(ii) ' dist=' num2str(round(pdist([COM_g1'; COM_g2']), 2))]);
-            end
             
             add_table = table(hemis(hh), {ROI_name}, ii, (COM_g1-COM_g2)', pdist([COM_g1'; COM_g2']));
             coord_diffs = [coord_diffs; add_table];
@@ -300,8 +280,3 @@ results_table_all = [results_auditory; results_visual];
 [c_p,c_a,h] = fdr_BH(results_table_all.perm_pval, .05);
 results_table_all.FDR_rejectnull = h;
 
-% Vis Aud testing
-load('/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_analysis_results/visaud_permtest_results.mat','results_table');
-
-[c_p,c_a,h] = fdr_BH(results_table.perm_pval, .05);
-results_table.FDR_rejectnull = h;

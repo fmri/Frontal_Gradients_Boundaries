@@ -18,7 +18,7 @@ N_modalities = length(modalities);
 contrasts = {'SMC', 'WM'};
 N_contrasts = length(contrasts);
 
-MD_ROI_names = {'8BM_ROI', '8C_ROI', 'IFJp_ROI', 'p9-46v_ROI', 'a9-46v_ROI', 'i6-8_ROI', 'AVI_ROI'};
+MD_ROI_names = {'8BM_ROI', '8C_ROI', 'IFJp_ROI', 'p9-46v_ROI', 'a9-46v_ROI', 'i6-8_ROI', 'AVI_ROI'}; % domain general/multiple demans MMP1 parcels 
 N_MD_ROIs = length(MD_ROI_names);
 
 prob_ROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/probabilistic_allROIs/';

@@ -27,7 +27,8 @@ hemis = {'lh', 'rh'};
 N_hemis = length(hemis);
 pval_thresh = -log10(0.05); % pvals in freesurfer files are expressed as -log10(p)
 
-permutations = rand(N, iterations)>0.5; % swap or not for each subj in each iteration (50% chance)
+% precalculate permutation structure
+permutations = rand(N, iterations)>0.5; % swap WM/SMC label or not for each subj in each iteration (50% chance)
 
 data_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
 permuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';

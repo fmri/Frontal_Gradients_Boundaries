@@ -1,6 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% The purpose of this script is to visualize the T-stats along the axis of
-%%% greatest difference of an ROI for each subj
+%%% The purpose of this script is to visualize the WM and sensory contrast
+%%% T-stats along the axis of greatest difference of an ROI for each subj
 %%%
 %%% Tom Possidente - May 2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -22,7 +22,7 @@ move_mean_window = 2.2; % mm
 
 save_out_image = true;
 
-%% Loop over subjs/hemis and calculate movmean
+%% Loop over subjs/hemis and calculate moving mean across ROI
 bin_centers = nan(N_subjs, N_hemis, 50);
 move_means = nan(N_subjs, N_contrasts, N_hemis, 50);
 slopes = nan(N_subjs, N_contrasts, N_hemis);
@@ -33,7 +33,7 @@ for hh = 1:N_hemis
         subj = subjCodes{ss};
         boundary = boundary_x(ss,hh);
         xs = xs_store{ss,hh};
-        xs = xs-boundary; % align to start at 0
+        xs = xs-boundary; % align to boundary point of boundary model on x-axis
         if isempty(xs) 
             continue;
         end
@@ -68,7 +68,6 @@ slope_means = squeeze(mean(slopes,1,'omitnan'));
 
 %% Plot
 
-%mean_xs = -24.5*move_mean_window:move_mean_window:24.5*move_mean_window
 mean_xs = squeeze(mean(bin_centers, 1, 'omitnan'))';
 
 f = figure; 

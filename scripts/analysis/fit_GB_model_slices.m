@@ -31,6 +31,7 @@ model_info = cell(n_slices,1);
 fit_results = cell(n_slices,1);
 key_metrics = nan(n_slices, 10); % rsquared, rmse, sse, num_observations, parameters1-4 (some may be blank if model does not have 4 params), min slice x, max slice x
 
+%% Loop over slices of ROI
 for ss = 1:n_slices
 
     % Get slice data
@@ -39,11 +40,13 @@ for ss = 1:n_slices
     slice_xs = xs_new(slice_mask);
     slice_ys = ys_new(slice_mask);
     slice_Ts = Ts(slice_mask);
+
     if isempty(group_data)
         slice_group_data = [];
     else
-        slice_group_data = group_data(slice_mask);
+        slice_group_data = group_data(slice_mask); % Get group data for this slice
     end
+
     if length(slice_Ts) < 20
         disp(['Fewer than 20 data points in slice ' num2str(ss) '/' num2str(n_slices) '... skipping slice']);
         continue
@@ -55,7 +58,7 @@ for ss = 1:n_slices
     if strcmp(type, 'step')
         model = fittype('x2*(x<x1) + x3*(x>=x1)',... % step function model
             'dependent', 'z',...
-            'independent', {'x'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
+            'independent', {'x'}, ... 
             'coefficients', {'x1','x2', 'x3'}); % x1 is step location, x2 is pre-step, x3 is post-step
 
         % Calculate initial guesses for boundary model parameters using group-level data
@@ -66,15 +69,11 @@ for ss = 1:n_slices
         end
         [fit_res_curr, gof_curr, info_curr] = fit(slice_xs, slice_Ts, model, 'StartPoint', startpoint_guesses); % actually fit
         parameters = [fit_res_curr.x1, fit_res_curr.x2, fit_res_curr.x3, nan];
-        % figure;
-        % scatter(slice_xs, slice_Ts, 100, 'filled');  hold on; 
-        % plot(fit_res_curr);
-        % xlabel('x'); ylabel('T-stat Difference');
-        % fontsize(20,'points');
+
     elseif strcmp(type, 'linear')
         model = fittype('x*a + b',... % linear function
             'dependent', 'z',...
-            'independent', {'x'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
+            'independent', {'x'}, ... 
             'coefficients', {'a','b'}); % a is slope, b is intercept
 
         % Calculate initial guesses for gradient model parameters using group-level data
@@ -90,10 +89,11 @@ for ss = 1:n_slices
 
         [fit_res_curr, gof_curr, info_curr] = fit(slice_xs, slice_Ts, model, 'StartPoint', startpoint_guesses); % actually fit
         parameters = [fit_res_curr.a, fit_res_curr.b, nan, nan];
+
     elseif strcmp(type, 'hinge')
         model = fittype('a*(x < x1) + b*(x > (x1+x2)) + ( a + ( (b-a)/((x1+x2)-x1)  * (x-x1) ) ) * ( (x > x1) & (x < (x1+x2)) )', ... % piecewise function, constant from -Inf to x1, linear from x1 to x2, constant from x2 to Inf. Must include y in the function even if it has no mathematical effect
             'dependent', 'z',...
-            'independent', {'x'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
+            'independent', {'x'}, ... 
             'coefficients', {'a','b','x1', 'x2'}); % a is z from -Inf to x1, b is z from x2 to Inf, x1 is where to start linear piece, x2 is where to end linear piece
 
         % Calculate initial guesses for gradient model parameters using group-level data
@@ -110,11 +110,7 @@ for ss = 1:n_slices
             'Lower', lower_bounds,...
             'Upper', upper_bounds); % actually fit
         parameters = [fit_res_curr.x1, fit_res_curr.x2, fit_res_curr.a, fit_res_curr.b]; 
-        % figure;
-        % scatter(slice_xs, slice_Ts, 100, 'filled'); hold on; %
-        % plot(fit_res_curr);
-        % xlabel('x'); ylabel('T-stat Difference');
-        % fontsize(20,'points')
+
     else
         error('model type not recognized')
     end
