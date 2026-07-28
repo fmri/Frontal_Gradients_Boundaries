@@ -15,8 +15,8 @@ tic;
 %% Initialize Key Variables
 
 iterations = 10000; 
-contrasts = {'aAaP-f', 'vAvP-f'; 'aAaP-f', ''}; % supramodal is {'vA-vP', 'aA-aP'; 'f-vP', 'f-aP'}). Supramodal_visual is {'aAaP-f', 'vAvP-f'; 'vAvP-f', ''}
-keyword= 'supramodal_auditory'; % used for naming nii files (auditory, visual, supramodal, visaud, supramodal_visual, supramodal_auditory)
+contrasts = {'vA-vP', 'vP-f'}; % supramodal is {'vA-vP', 'aA-aP'; 'f-vP', 'f-aP'}). Supramodal_visual is {'aAaP-f', 'vAvP-f'; 'vAvP-f', ''}
+keyword= 'visual'; % used for naming nii files (auditory, visual, supramodal, visaud, supramodal_visual, supramodal_auditory)
 N_contrasts = 2;
 
 subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI', 'SL'};
@@ -31,8 +31,7 @@ permutations = rand(N, iterations)>0.5; % swap or not for each subj in each iter
 
 data_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked_data_nii_fs_localizer/';
 permuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_probabilistic_maps_WMSMC/';
-%unpermuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
-unpermuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/supra_aud_nonpermuted_probabilistic/';
+unpermuted_maps_outdir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
 
 %% Create alternative contrast names if needed
 if ~ismember(keyword, {'supramodal', 'supramodal_visual', 'supramodal_auditory'})

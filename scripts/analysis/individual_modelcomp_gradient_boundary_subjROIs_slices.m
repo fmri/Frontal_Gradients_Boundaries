@@ -1,6 +1,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% The purpose of this script is to compare a gradient-based and
-%%% boundary-based model of change in function (contrast t-stats) across an ROI in
+%%% boundary-based models of change in function (contrast t-stats) across an ROI in
 %%% individual subjects
 %%%
 %%% Tom Possidente - Septemeber 2025
@@ -25,15 +25,15 @@ group_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked
 subj_ROIs = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/subj_specific_01/';
 
 % Set models/methods used
-contrasts = {'aP-f', 'aA-aP'}; % which functional data contrasts to use (supramodal is 'aPvP-f', 'vAaA-vPaP')
+contrasts = {'vP-f', 'vA-vP'}; % which functional data contrasts to use (supramodal is 'aPvP-f', 'vAaA-vPaP')
 N_contrasts = length(contrasts);
-modality = 'auditory'; % visual, auditory, supramodal, visaud
-ROI_name = 'aIPS'; % Which ROI to look at: preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, aIPS
+modality = 'visual'; % visual, auditory, supramodal, visaud
+ROI_name = 'preSMA'; % Which ROI to look at: preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, aIPS
 models = {'step', 'linear', 'hinge'};
 axis_method = 'average'; % regression (uses regression to find axis of largest difference) or average (uses weighted average of positive and negative pts to make line)
 axis_choice = 'step'; % step (use step function axis for all models) or individual (use best axis for each model individually)
 
-plot_fits = false; % plot out individual subj fits (debugging only unless you want a ~100 plots)
+plot_fits = true; % plot out individual subj fits (debugging only unless you want a ~100 plots)
 
 dist_thresh = 4.8; % mm
 
@@ -87,6 +87,8 @@ linear_xdist = nan(N_subjs, num_hemis); % distance of hinge in hinge model (mm)
 BICs = nan(N_subjs, num_hemis, 3); % Raw BICs for each model
 change_direction = nan(N_subjs, num_hemis, 3); % 1 for expected direction (increase along X axis), else 0
 slopes = nan(N_subjs, num_hemis); 
+hinge_means_all = cell(N_subjs,num_hemis);
+step_means_all = cell(N_subjs,num_hemis);
 
 % Parameters for how to rotate axis when fitting
 deg_step = 1; % degrees
@@ -206,8 +208,10 @@ for hh = 1:num_hemis
         end
         %% Take weighted means of metrics
         step_means = mean(metrics_step, 'omitnan', 'Weights', metrics_step.numobs);
+        step_means_all{ss,hh} = step_means;
         linear_means = mean(metrics_linear,'omitnan', 'Weights', metrics_step.numobs);
         hinge_means = mean(metrics_hinge, 'omitnan', 'Weights', metrics_step.numobs);
+        hinge_means_all{ss,hh} = hinge_means;
 
         %% Calculate log likelihood of each model
         LL_step = loglikelihood(step_means.numobs, step_means.rmse, step_means.sse);
@@ -324,7 +328,7 @@ title(['Hinge Model R-squared | \mu=', num2str(round(mean(rsqr_hingewinners),2))
 sgtitle([replace(ROI_name,'_','-') ' ' modality ' | N = ' num2str(new_N) ', ' num2str(length(rsqr_hingewinners)) ' hinge wins']);
 
 %% Save 
-save([ROI_name '_' modality '_WMSMC_xs_Ts.mat'], 'subjCodes', 'hemis', 'xs_store', 'boundary_x', 'Ts_store', 'ROI_name', 'good_winning_direction', 'boundary_wins', 'gradient_wins');
+%save([ROI_name '_' modality '_WMSMC_xs_Ts.mat'], 'subjCodes', 'hemis', 'xs_store', 'boundary_x', 'Ts_store', 'ROI_name', 'good_winning_direction', 'boundary_wins', 'gradient_wins');
 %save([ROI_name '_' modality '_r2_hingelength.mat'], 'subjCodes', 'hemis', 'gradient_wins', 'boundary_wins', 'good_winning_direction', 'winning_rsquare', 'linear_xdist');
 
 %% Helper functions %%

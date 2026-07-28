@@ -23,8 +23,6 @@ n = length(subjCodes);
 behavioral_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/behavioral/behavioral/';
 modality_names = {'visual', 'auditory', 'tactile'};
 n_conditions = 2*length(modality_names);
-%correct_colnames = {'trials_response', 'trialsresponse', 'odd_trial_responseCorrect'};
-% correct_colnames = {'odd_trial_responseCorrect', 'even_trial_responseCorrect'};
 correct_colnames = {'even_trial_responseCorrect', 'odd_trial_responseCorrect'};
 perc_correct_all = nan(n,n_conditions);
 n_cond = nan(n,n_conditions);
@@ -63,8 +61,6 @@ for ss = 1:n
     responses = [];
     modalities = {};
     conditions = {};
-    %cue_text_stopped = {}; % indicates 1st trial (should be dropped)
-
 
     % Loop through each run and collect reponses, modality, and condition data
     len_runs = zeros(num_runs+1,1);
@@ -79,12 +75,8 @@ for ss = 1:n
         cue_text_stopped(rr,2,:) = behavioral_data.cue_text_stopped;
 
         which_column = find(ismember(correct_colnames, behavioral_data.Properties.VariableNames));
-        % if which_column ~= 1
-        %     keyboard;
-        % end
         responses(ss,rr,1,:) = behavioral_data.(correct_colnames{which_column(1)});
         responses(ss,rr,2,:) = behavioral_data.(correct_colnames{which_column(2)});
-        %len_runs(rr+1) = length(behavioral_data.(correct_colnames{which_column}));
     end
 
     subj_responses = squeeze(responses(ss,:,:,:));

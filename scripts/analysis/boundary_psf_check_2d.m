@@ -118,4 +118,3 @@ end
 fprintf('\nAll simulations completed.\n');
 
 P_95 = prctile(ramp_lengths,95)
-P_99 = prctile(ramp_lengths,99)

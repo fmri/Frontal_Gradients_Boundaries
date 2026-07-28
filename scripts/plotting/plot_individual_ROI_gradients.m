@@ -34,7 +34,7 @@ for hh = 1:N_hemis
         boundary = boundary_x(ss,hh);
         xs = xs_store{ss,hh};
         xs = xs-boundary; % align to start at 0
-        if isempty(xs) | 
+        if isempty(xs) 
             continue;
         end
         bin_edges = min(xs):move_mean_window:max(xs);

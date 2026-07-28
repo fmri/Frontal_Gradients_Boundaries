@@ -1,7 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% The purpose of this script is to calculate the center of mass of
 %%% permuted probabilistic ROIs for WM and SMC contrasts, then compare those flatmap
-%%% XY locations (direction and distance)
+%%% XY locations 
 %%%
 %%% Tom Possidente - January 2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

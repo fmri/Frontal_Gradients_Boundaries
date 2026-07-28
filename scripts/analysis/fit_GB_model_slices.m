@@ -29,7 +29,7 @@ n_slices = length(bins) - 1;
 gofs = cell(n_slices,1);
 model_info = cell(n_slices,1);
 fit_results = cell(n_slices,1);
-key_metrics = nan(n_slices, 8); % rsquared, rmse, sse, num_observations, parameters1-4 (some may be blank if model does not have 4 params)
+key_metrics = nan(n_slices, 10); % rsquared, rmse, sse, num_observations, parameters1-4 (some may be blank if model does not have 4 params), min slice x, max slice x
 
 for ss = 1:n_slices
 
@@ -122,7 +122,7 @@ for ss = 1:n_slices
     fit_results{ss} = fit_res_curr;
     gofs{ss} = gof_curr;
     model_info{ss}= info_curr;
-    key_metrics(ss,:) = [gof_curr.rsquare, gof_curr.rmse, gof_curr.sse, info_curr.numobs, parameters];
+    key_metrics(ss,:) = [gof_curr.rsquare, gof_curr.rmse, gof_curr.sse, info_curr.numobs, parameters, min(slice_xs), max(slice_xs)];
 end
-key_metrics = array2table(key_metrics, 'VariableNames',{'rsquare', 'rmse', 'sse', 'numobs', 'p1', 'p2', 'p3', 'p4'});
+key_metrics = array2table(key_metrics, 'VariableNames',{'rsquare', 'rmse', 'sse', 'numobs', 'p1', 'p2', 'p3', 'p4', 'xmin', 'xmax'});
 end

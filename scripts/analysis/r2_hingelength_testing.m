@@ -87,11 +87,6 @@ for rr = 1:N_ROIs
             hinge_model = fitlme(hinge_table, 'hinge ~ 1');
         end
 
-        %%%
-        mean(hinge_table.hinge+4.8)
-        std(hinge_table.hinge/sqrt(height(hinge_table)))
-        %%%
-
         rsqr_estimates(rr,mm) = rsqr_model.Coefficients.Estimate(1);
         rsqr_SEs(rr,mm) = rsqr_model.Coefficients.SE(1);
         rsqr_pvals(rr,mm) = rsqr_model.Coefficients.pValue(1);

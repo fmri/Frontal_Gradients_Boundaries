@@ -20,7 +20,7 @@ N_contrasts = 2;
 colors = nan(N_subjs,N_hemis,3);
 move_mean_window = 2.2; % mm
 
-save_out_image = true;
+save_out_image = false;
 
 %% Loop over subjs/hemis and calculate movmean
 bin_centers = nan(N_subjs, N_hemis, 50);
