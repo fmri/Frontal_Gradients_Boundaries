@@ -33,7 +33,7 @@ models = {'step', 'linear', 'hinge'};
 axis_method = 'average'; % regression (uses regression to find axis of largest difference) or average (uses weighted average of positive and negative pts to make line)
 axis_choice = 'step'; % step (use step function axis for all models) or individual (use best axis for each model individually)
 
-plot_fits = true; % plot out individual subj fits (debugging only unless you want a ~100 plots)
+plot_fits = false; % plot out individual subj fits (debugging only unless you want a ~100 plots)
 
 dist_thresh = 4.8; % mm
 
@@ -298,21 +298,21 @@ xlim([-2,4]); xticks([]);
 title({['Step vs Hinge Model | \mu=' num2str(round(m,2)) ' | SE=' num2str(round(SE,2)) ]})
 
 % Plot hinge distances
-xdists_hingewinners = linear_xdist(good_winning_direction==1);
+xdists_good_dir = linear_xdist(good_winning_direction==1);
 xdist_hingewinners_lh = linear_xdist(good_winning_direction(:,1)==1,1);
-m = mean(xdists_hingewinners);
-SE = std(xdists_hingewinners)/sqrt(length(xdists_hingewinners));
+m = mean(xdists_good_dir);
+SE = std(xdists_good_dir)/sqrt(length(xdists_good_dir));
 subplot(1,3,2);
-swarmchart(ones(length(xdists_hingewinners)), xdists_hingewinners, [], 'k', 'filled'); hold on;
+swarmchart(ones(length(xdists_good_dir)), xdists_good_dir, [], 'k', 'filled'); hold on;
 errorbar(1, m, SE, 'Color', 'r','Marker', '.', 'MarkerSize', 30, 'CapSize',15, 'LineWidth',3);
 yline(dist_thresh, '--r');
 xlim([-2,4]); xticks([]);
 ylabel('Hinge Length Across Cortex (mm)');
-title({['Hinge Length | \mu=' num2str(round(mean(xdists_hingewinners),2)) '| SE=' num2str(round(SE,2)) ]})
+title({['Hinge Length | \mu=' num2str(round(mean(xdists_good_dir),2)) '| SE=' num2str(round(SE,2)) ]})
 
 % Plot hinge R squareds
-rsqr_hingewinners = winning_rsquare(gradient_wins & change_direction(:,:,3)==1);
-rsqr_hingewinners_lh = winning_rsquare(gradient_wins(:,1)==1 & change_direction(:,1,3)==1,1);
+rsqr_hingewinners = winning_rsquare(gradient_wins & good_winning_direction==1);
+rsqr_hingewinners_lh = winning_rsquare(gradient_wins(:,1)==1 & good_winning_direction(:,1)==1,1);
 rsqr_boundwinners_lh = winning_rsquare(boundary_wins(:,1)==1 & good_winning_direction(:,1)==1,1);
 m = mean(rsqr_hingewinners);
 SE = std(rsqr_hingewinners/sqrt(length(rsqr_hingewinners)));

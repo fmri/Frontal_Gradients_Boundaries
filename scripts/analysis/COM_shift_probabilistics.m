@@ -65,7 +65,7 @@ for cc = 1:N_contrasts
             inds_label = label{:,1};
             patch_in_label = ismember(inds_label, patch.ind);
             perc_labelinpatch = sum(patch_in_label)/length(inds_label);
-            if perc_labelinpatch<0.99
+            if perc_labelinpatch<0.99 % patch and label should match with near 100% overlap
                 warning([hemi ' ' ROI_name ' ' group ' percent of label in patch was ' num2str(perc_labelinpatch)])
             end
             inds = inds_label(patch_in_label);
