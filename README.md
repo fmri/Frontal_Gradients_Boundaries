@@ -15,6 +15,6 @@ Organization:
           >ROI_creation: script for creating the individual subj-level ROIs used in analysis
           >ROI_probabilistics_scripts: scripts for permuting subj-level ROI labels and combining into probabilistics used in permutation testing for COM shift analysis. 
           >analysis: all analyses for this project (COM shift, domain general dice, gradient/boundary modeling, behavioral accuracy, etc)
-          >mics: file reorg scrip and screenshotting scripts for freeview
+          >misc: file reorg scrip and screenshotting scripts for freeview
           >plotting: scripts that only plot data used in figures
 
