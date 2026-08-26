@@ -22,7 +22,7 @@ MD_ROI_names = {'8BM_ROI', '8C_ROI', 'IFJp_ROI', 'p9-46v_ROI', 'a9-46v_ROI', 'i6
 N_MD_ROIs = length(MD_ROI_names);
 
 prob_ROI_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/probabilistic_allROIs/';
-prob_ROIs = {'preSMA', 'inf_lat_frontal', 'aINS', 'sup_lat_frontal', 'midIFS'};
+prob_ROIs = {'preSMA', 'inf_lat_frontal', 'aINS', 'sup_lat_frontal', 'midIFS'}; 
 N_prob_ROIs = length(prob_ROIs);
 
 N_vertices = 163842;
@@ -43,7 +43,7 @@ end
 
 MD_ROI_masks = squeeze(sum(MD_ROI_masks,2));
 
-%% Loop over hemis/ROIs/modalities/contrasts and calculate dice coefs
+%% Loop over hemis/ROIs/modalities/contrasts and calculate dice coefs between each probabilistic ROI and each MD ROI
 probmap_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/SMC_WM_nonpermuted_probabilistics/';
 dice_coefs = nan(N_hemis, N_modalities, N_contrasts, N_prob_ROIs);
 

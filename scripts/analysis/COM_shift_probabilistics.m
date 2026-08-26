@@ -1,7 +1,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% The purpose of this script is to calculate the center of mass of
-%%% permuted probabilistic ROIs for WM and SMC contrasts, then compare those flatmap
-%%% XY locations 
+%%% The purpose of this script is to calculate the center of mass (COM)of
+%%% permuted probabilistic ROIs for WM and SMC contrasts, then compare the 
+%%% spatial distances between flatmap XY COM locations to the distances
+%%% between the real/original data COMs.
 %%%
 %%% Tom Possidente - January 2026
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -48,16 +49,16 @@ tic;
 
 for cc = 1:N_contrasts
     group = permutation_names{cc};
-    parfor rr = 1:N_ROIs
+    for rr = 1:N_ROIs
         ROI_name = ROI_names{rr};
         for hh = 1:N_hemis
             hemi = hemis{hh};
 
-            % Load patch file
+            % Load ROI flat patch file (flat xy space)
             patch_path = [ROI_dir hemi '.' ROI_name '_prob_thresh5_flat.patch'];
             patch = read_patch(patch_path);
 
-            % Load label file
+            % Load ROI label file (identifies vertex indices in ROI)
             label_path = [ROI_dir hemi '.' ROI_name '_prob_thresh5.label'];
             label = readtable(label_path, 'FileType', 'text');
 
@@ -71,17 +72,17 @@ for cc = 1:N_contrasts
             inds = inds_label(patch_in_label);
 
             for ii = 1:N_iterations
-                % Load probabilistic data for full hemisphere
+                % Load permuted probabilistic data for full hemisphere
                 prob_data_path = [perm_dir hemi '_iter' num2str(ii) '_' group '_' keyword '.nii'];
                 prob_data = MRIread(prob_data_path);
 
-                % Restrict to prob map >= N_thresh
+                % Restrict to prob map >= N_thresh in ROI
                 ROI_inds_good = find(prob_data.vol >= N_thresh);
                 inds_iter = inds(ismember(inds, ROI_inds_good-1)); % -1 to convert from nii indexing to label indexing
                 inds_iter = sort(inds_iter); % keep order consistent
-                ROI_data = prob_data.vol(inds_iter+1); % +1 to convert from label indexing to nii indexing
+                ROI_data = prob_data.vol(inds_iter+1); % Get over threshold prob data in ROI (+1 to convert from label indexing to nii indexing)
 
-                % Calculate center of mass using XY coords and #subjs per vertex
+                % Calculate center of mass using XY coords and #subjs per vertex for data within ROI
                 ind_mask = ismember(patch.ind, inds_iter);
                 x = patch.x(ind_mask);
                 y = patch.y(ind_mask);
@@ -111,7 +112,7 @@ dimensions = {'ROI', 'group', 'hemisphere', 'iteration', 'XYcoordinates'};
 save(['permutation_COMs_' keyword '_' num2str(N_iterations) 'iters.mat'], 'COMs', 'dimensions');
 toc;
 
-%% Calculate COM of original WM and SMC grouped data
+%% Calculate COM of original WM and SMC grouped data (same process as above, but for non-permuted data)
 original_COMs = nan(N_ROIs, N_contrasts, N_hemis, 2);
 for hh = 1:N_hemis
     hemi = hemis{hh};
@@ -192,7 +193,7 @@ for hh = 1:N_hemis
     end
 end
 
-%% Compare distance between COMs
+%% Compare distance between COMs for permuted data
 tic;
 coord_diffs = table();
 
@@ -245,7 +246,7 @@ for hh = 1:N_hemis
 end
 orig_coord_diffs.Properties.VariableNames = {'hemisphere', 'ROI', 'XY_difference', 'distance'};
 
-%% Plot null distriubtion of distances
+%% Plot null distriubtion of distances between COMs of permuted data
 results_table = table();
 for hh = 1:N_hemis
     hemi = hemis{hh};
@@ -269,7 +270,6 @@ save([keyword '_permtest_results.mat'], 'results_table')
 
 %% FDR testing
 
-% WM testing 
 load('/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_analysis_results/auditory_permtest_results.mat','results_table');
 results_auditory = results_table;
 load('/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/permutation_analysis_results/visual_permtest_results.mat','results_table');

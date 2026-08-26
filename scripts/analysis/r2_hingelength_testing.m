@@ -3,7 +3,7 @@
 %%% (r-squared) and hinge length parameters from individual model fitting
 %%%
 %%% Tom Possidente - June 2026
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                    
 
 addpath(genpath('/projectnb/somerslab/tom/functions/'));
 ccc;
@@ -12,7 +12,7 @@ ccc;
 data_dir = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/r2_hingelength_data/';
 ROIs = {'preSMA', 'inf_lat_frontal', 'aINS', 'sup_lat_frontal', 'aIPS', 'midIFS'};
 N_ROIs = length(ROIs);
-ROI_hemis_vis = {'C', 'C', 'LR', 'LR', '', 'LR'}; % hemispheres being examined for each ROI (for visual)
+ROI_hemis_vis = {'C', 'C', 'LR', 'LR', '', 'LR'}; % hemispheres being examined for each ROI (for visual) C = combined, LR = separate L and R hemispheres
 ROI_hemis_aud = {'C', 'C', 'C', 'C', 'LR', 'LR'}; % hemispheres being examined for each ROI (for auditory)
 ROI_hemis = {ROI_hemis_aud; ROI_hemis_vis};
 modalities = {'auditory', 'visual'};
@@ -29,19 +29,20 @@ for rr = 1:N_ROIs
         modality = modalities{mm};
         names{rr,mm} = [ROI '_' modality];
         if isfile([data_dir ROI '_' modality '_r2_hingelength.mat'])
-            load([data_dir ROI '_' modality '_r2_hingelength.mat'], 'gradient_wins', 'boundary_wins', 'good_winning_direction', 'winning_rsquare', 'linear_xdist');
+            load([data_dir ROI '_' modality '_r2_hingelength.mat'], 'gradient_wins', 'boundary_wins', 'good_winning_direction', 'winning_rsquare', 'linear_xdist'); % loading r2 and gradient distance data for all subjs
         else
             disp([ROI ' ' modality ' file not found']);
             continue;
         end
 
-        % Testing r-squared > .1 and hinge length > 4.8
+        %% Testing r-squared > .1 and hinge length > 4.8
         ROI_hemi = ROI_hemis{mm}{rr};
         rsqr_table = table();
         hinge_table = table;
+
         % LH r2
         subj_ids_r2_lh = 1:size(winning_rsquare,1);
-        if sum(gradient_wins(:,1))>sum(boundary_wins(:,1))
+        if sum(gradient_wins(:,1))>sum(boundary_wins(:,1)) % get winningest model winner indices
             winningest_model_wins = gradient_wins(:,1);
         elseif sum(gradient_wins(:,1))<sum(boundary_wins(:,1))
             keyboard;
@@ -49,14 +50,14 @@ for rr = 1:N_ROIs
         else
             error('equal number of gradient and boundary wins (I dont think this ever happens)');
         end
-        rsqr_lh = winning_rsquare(winningest_model_wins&good_winning_direction(:,1)==1,1);
-        subj_ids_r2_lh = subj_ids_r2_lh(winningest_model_wins&good_winning_direction(:,1)==1)';
-        rsqr_table = table(rsqr_lh, subj_ids_r2_lh, ones(length(rsqr_lh),1), 'VariableNames',{'rsqr', 'subj', 'hemi'});
+        rsqr_lh = winning_rsquare(winningest_model_wins&good_winning_direction(:,1)==1,1); % get r-squareds for winningest model's winners
+        subj_ids_r2_lh = subj_ids_r2_lh(winningest_model_wins&good_winning_direction(:,1)==1)'; % get their subj ids
+        rsqr_table = table(rsqr_lh, subj_ids_r2_lh, ones(length(rsqr_lh),1), 'VariableNames',{'rsqr', 'subj', 'hemi'}); % format into table
         % LH hinge
         subj_ids_hinge_lh = 1:size(linear_xdist,1);
-        hinge_lh = linear_xdist(~isnan(linear_xdist(:,1))&good_winning_direction(:,1)==1,1);
-        subj_ids_hinge_lh = subj_ids_hinge_lh(~isnan(linear_xdist(:,1))&good_winning_direction(:,1)==1)';
-        hinge_table = table(hinge_lh, subj_ids_hinge_lh, ones(length(hinge_lh),1), 'VariableNames',{'hinge', 'subj', 'hemi'});
+        hinge_lh = linear_xdist(~isnan(linear_xdist(:,1))&good_winning_direction(:,1)==1,1); % get xdist for all hinge models (even if hinge length indicates boundary, we want to include those to get a true measure of gradient length across all data)
+        subj_ids_hinge_lh = subj_ids_hinge_lh(~isnan(linear_xdist(:,1))&good_winning_direction(:,1)==1)'; % get subj IDs
+        hinge_table = table(hinge_lh, subj_ids_hinge_lh, ones(length(hinge_lh),1), 'VariableNames',{'hinge', 'subj', 'hemi'}); % format into table
         % RH r2
         subj_ids_rh = 1:size(winning_rsquare,1);
         if sum(gradient_wins(:,2))>sum(boundary_wins(:,2))
@@ -80,14 +81,14 @@ for rr = 1:N_ROIs
 
         disp([ROI ' ' modality])
 
-        rsqr_table.subj = categorical(rsqr_table.subj); % make these variables categorical instead of continuous
+        rsqr_table.subj = categorical(rsqr_table.subj); % make these variables categorical instead of continuous so they will work with LME
         rsqr_table.hemi = categorical(rsqr_table.hemi);
         rsqr_table.rsqr = rsqr_table.rsqr - 0.1; % shift down 0.1 so testing against 0 is the same as testing against 0.1 (null hypothesis)
         hinge_table.subj = categorical(hinge_table.subj);
         hinge_table.hemi = categorical(hinge_table.hemi);
         hinge_table.hinge = hinge_table.hinge - 4.8; % shift down 4.8 so testing against 0 is same as testing against 4.8
 
-        if length(ROI_hemi)==2 % test hemispheres separately to see if there is a hemispheric difference
+        if length(ROI_hemi)==2 % test hemispheres separately to see if there is a hemispheric difference (no need for hemisphere/subj random effects here, only one data point per subj)
             for hh = 1:N_hemis
                 rsqr_model = fitlme(rsqr_table(rsqr_table.hemi==string(hh),:), 'rsqr ~ 1');
                 hinge_model = fitlme(hinge_table(hinge_table.hemi==string(hh),:), 'hinge ~ 1');

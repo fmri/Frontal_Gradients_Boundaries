@@ -1,6 +1,7 @@
 function [gof, info, winning_angle, xs_out, ys_out, model_out] = fit_GB_model(type, xs, ys, Ts, group_data, angles)
 % FIT_GB_MODEL fits boundary (step function) or gradient (linear, hinge
-% functions) to the given data at the supplied angle rotations
+% functions) to the given data at the supplied angle rotations. Without
+% slicing/sectioning ROI.
 %
 %   Note that for all custom functions used with Matlab's "fit" function,
 %   the default optimizer algorithm is non-linear trust-region

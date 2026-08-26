@@ -31,6 +31,7 @@ perc_correct_byrun = nan(n,2,6);
 condition_str = {'active', 'passive'};
 condition_order = {'visual_active', 'visual_passive', 'auditory_active', 'auditory_passive', 'tactile_active', 'tactile_passive'};
 
+% loop over subjs
 for ss = 1:n
 
     subjCode = subjCodes{ss};

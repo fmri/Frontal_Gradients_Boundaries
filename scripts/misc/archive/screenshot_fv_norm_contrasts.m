@@ -14,7 +14,7 @@ experiment_name = 'spacetime';
 subjDf = load_subjInfo();
 subjDf_cut = subjDf(~strcmp(subjDf.([experiment_name,'Runs']),''),:);
 subjCodes = subjDf_cut.subjCode;
-subjCodes = subjDf_cut.subjCode(~ismember(subjDf_cut.subjCode, {'AH', 'SL', 'RR', 'PP', 'MM'}));
+subjCodes = subjDf_cut.subjCode(~ismember(subjDf_cut.subjCode, {'AH', 'RR', 'PP', 'MM'})); % remove excluded subjs
 N = length(subjCodes);
 
 

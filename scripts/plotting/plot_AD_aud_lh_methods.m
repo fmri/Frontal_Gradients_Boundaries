@@ -9,7 +9,7 @@ addpath(genpath('/projectnb/somerslab/tom/functions/'));
 ccc;
 
 %% Initialize Key Variables
-% Load in slice model fits for subj AD lh auditory preSMA
+% Load in slice hinge model fits for subj AD lh auditory preSMA
 load('/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/AD_lh_aud_slice_models.mat', 'metrics_hinge','metrics_step');
 N_slices = height(metrics_hinge);
 norm_counts = metrics_hinge.numobs/max(metrics_hinge.numobs); % normalize number of data points per slice from 0-1 for easier plotting

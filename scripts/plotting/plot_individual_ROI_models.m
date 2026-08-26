@@ -20,14 +20,14 @@ N_hemis = length(hemis);
 
 save_png = false;
 
-%% Loop over subjs/hemis and calculate movmean
+%% Loop over subjs/hemis and extract/plot model fit
 for hh = 1:N_hemis
     hinge_means = [];
     figure; 
     hemi = hemis{hh};
     for ss = 1:N_subjs
 
-        if isnan(good_winning_direction(ss,hh))
+        if isnan(good_winning_direction(ss,hh)) % some subjs are missing some ROIs
             continue;
         end
 
@@ -41,17 +41,17 @@ for hh = 1:N_hemis
             color = [0.7 0.7 0.7];
             style = '-';
         end
-
-        hinge_mean = hinge_means_all{ss,hh};
-        hinge_means(end+1,:) = table2array(hinge_mean);
-        x_modifier = hinge_mean.p1 + (hinge_mean.p2/2);
+        
+        hinge_mean = hinge_means_all{ss,hh}; % get mean hinge model over all slices for this subj/hemisphere
+        hinge_means(end+1,:) = table2array(hinge_mean); % store it
+        x_modifier = hinge_mean.p1 + (hinge_mean.p2/2); % x-coordinate modifier to align all subjs
         p(ss) = plot([hinge_mean.xmin-x_modifier, hinge_mean.p1-x_modifier, hinge_mean.p1+hinge_mean.p2-x_modifier, hinge_mean.xmax-x_modifier],...
             [hinge_mean.p3, hinge_mean.p3, hinge_mean.p4, hinge_mean.p4], 'Color',color, 'LineWidth',3, 'LineStyle',style);
         hold on;
     end
 
-    hinge_means = mean(hinge_means);
-    x_modifier_mean = hinge_means(5) + (hinge_means(6)/2);
+    hinge_means = mean(hinge_means); % get mean hinge model over all subjs for this hemisphere
+    x_modifier_mean = hinge_means(5) + (hinge_means(6)/2); 
     p(end+1) = plot([hinge_means(:,9)-x_modifier_mean, hinge_means(:,5)-x_modifier_mean, hinge_means(:,5)+hinge_means(:,6)-x_modifier_mean, hinge_means(10)-x_modifier_mean],...
         [hinge_means(7), hinge_means(7), hinge_means(8), hinge_means(8)], 'Color','k', 'LineWidth',7, "LineStyle", ':');
 

@@ -25,7 +25,7 @@ group_dir = '/projectnb/somerslab/tom/projects/sensory_networks_FC/data/unpacked
 subj_ROIs = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data/ROIs/subj_specific_01/';
 
 % Set models/methods used
-contrasts = {'vP-f', 'vA-vP'}; % which functional data contrasts to use (supramodal is 'aPvP-f', 'vAaA-vPaP')
+contrasts = {'vP-f', 'vA-vP'}; % which functional data contrasts to use (supramodal is 'aPvP-f', 'vAaA-vPaP'). P = passive/sensorimotor control, A = active/WM, v = visual, a = auditory, f = fixation
 N_contrasts = length(contrasts);
 modality = 'visual'; % visual, auditory, supramodal, visaud
 ROI_name = 'preSMA'; % Which ROI to look at: preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, aIPS
@@ -35,14 +35,14 @@ axis_choice = 'step'; % step (use step function axis for all models) or individu
 
 plot_fits = false; % plot out individual subj fits (debugging only unless you want a ~100 plots)
 
-dist_thresh = 4.8; % mm
+dist_thresh = 4.8; % Indicates (in mm) minimum distance ramp section of hinge function must be to be considered a gradient instead of a boundary
 
 %% Load probabilistic ROI (flat patch) to use for determining group level axis of greatest change
 ROI_lh = read_patch([label_dir hemis{1} '.' ROI_name '_prob_thresh5_flat.patch']);
 ROI_rh = read_patch([label_dir hemis{2} '.' ROI_name '_prob_thresh5_flat.patch']);
 ROIs = {ROI_lh, ROI_rh};
 
-%% Compute group level axis of greatest change
+%% Compute group level axis of greatest change (used to initialize direction of sensory-WM functional change)
 group_data_diff = cell(2,1);
 group_angle = nan(2,1);
 percent_neg = nan(2,1);
@@ -74,6 +74,8 @@ for hh = 1:num_hemis
     [ROIs{hh}.x, ROIs{hh}.y, group_angle(hh)] = group_find_axis(axis_method, group_data_diff{hh}, ROIs{hh}.x', ROIs{hh}.y', hemi);
 end
 
+%save(['flatpatch_ROI_rotated_' ROI_name '.mat'], 'ROIs', 'group_angle');
+
 %% Loop over subjects and fit boundary and gradient models to contrast data
 % Lots of stats/diagnostic storage variables
 Ts_store = cell(N_subjs, N_contrasts, 2); % T stats for each ROI/subj/hemi
@@ -92,7 +94,7 @@ step_means_all = cell(N_subjs,num_hemis);
 
 % Parameters for how to rotate axis when fitting
 deg_step = 1; % degrees
-deg_tolerance = 60; % searching +/- 45 degrees off of group axis of greatest change
+deg_tolerance = 60; % searching +/- deg_toloerance degrees off of group axis of greatest change
 angles = 0-deg_tolerance:deg_step:0+deg_tolerance;
 winning_angles = nan(N_subjs, num_hemis); % which angle was optimal
 perc_neg = nan(N_subjs, num_hemis, N_contrasts);
@@ -149,11 +151,12 @@ for hh = 1:num_hemis
             title('original');
         end
 
-        %% Fit step-wise function to data (boundary model)
-
+        %% Fit step function to data (boundary model)
+        % First find angle that maximizes step model fit for whole ROI (no slices)
         [winning_angle, winning_angle_model]= individual_find_axis_noslice('step', xs, ys, Ts, group_data_curr, angles);
         winning_angles(ss,hh) = winning_angle; 
-
+        
+        % Fit at winning angle per slice
         [metrics_step, ~, ~, xs_new, ys_new, ~, bins_step] = fit_GB_model_slices('step', xs, ys, Ts, group_data_curr, winning_angle);
         xs_store{ss,hh} = xs_new;
         boundary_x(ss,hh) = winning_angle_model.x1; 
@@ -174,7 +177,7 @@ for hh = 1:num_hemis
             title(['step: rotate= ' num2str(winning_angle) ', rsqr=' num2str(round(mean(metrics_step.rsquare, 'omitnan', "Weights", metrics_step.numobs),2))])
         end
 
-        %% Fit 2D plane to data (linear gradient model)
+        %% Fit linear gradient model
         [metrics_linear, ~, ~, xs_new, ys_new, ~] = fit_GB_model_slices('linear', xs, ys, Ts, group_data_curr, winning_angle);
 
         if plot_fits % plot
@@ -187,7 +190,7 @@ for hh = 1:num_hemis
             title(['linear: rsqr=' num2str(round(mean(metrics_linear.rsquare, 'omitnan', "Weights", metrics_step.numobs),2))])        
         end
 
-        %% Fit 2D plane to subsection of data (hinge function gradient model)
+        %% Fit hinge function gradient model
         [metrics_hinge, ~, ~, xs_new, ys_new, ~] = fit_GB_model_slices('hinge', xs, ys, Ts, group_data_curr, winning_angle);
 
         if plot_fits % plot
@@ -206,6 +209,7 @@ for hh = 1:num_hemis
             end
             title(['hinge: rsqr=' num2str(round(mean(metrics_hinge.rsquare, 'omitnan', "Weights", metrics_step.numobs),2))])        
         end
+
         %% Take weighted means of metrics
         step_means = mean(metrics_step, 'omitnan', 'Weights', metrics_step.numobs);
         step_means_all{ss,hh} = step_means;
@@ -231,7 +235,7 @@ for hh = 1:num_hemis
         disp(['winning model r^2: ' num2str(round(rsquares(ind),3))]);
         winning_rsquare(ss,hh) = rsquares(ind);
 
-        % If hinge model is the winner, check whether the linear piece is large enough to cross multiple voxels
+        % If hinge model is the winner, check how long linear piece is 
         if ind==3
             linear_xdist(ss,hh) = mean((metrics_hinge.p2 + metrics_hinge.p1) - metrics_hinge.p1, 'omitnan', 'Weights', metrics_hinge.numobs); % just take difference between end of hinge and beginning of hinge on x axis
             slopes(ss,hh) = mean(metrics_hinge.p4 - metrics_hinge.p3, 'omitnan', 'Weights', metrics_hinge.numobs)/linear_xdist(ss,hh); % and record the slope for later analysis

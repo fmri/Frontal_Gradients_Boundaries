@@ -1,6 +1,8 @@
 function [key_metrics, gofs, model_info, xs_new, ys_new, fit_results, bins] = fit_GB_model_slices(type, xs, ys, Ts, group_data, angle, slice_size)
 % FIT_GB_MODEL fits boundary (step function) or gradient (linear, hinge
-% functions) to the given data at the supplied angle rotations.
+% functions) to the given data at the supplied angle rotations. Does so by
+% sectioning ROI into slices of size "slice_size" (mm) parallel to x axis
+% (after rotation) and fitting to each slice.
 %
 %   Note that for all custom functions used with Matlab's "fit" function,
 %   the default cost function is non-linear least squares and the default
@@ -44,9 +46,10 @@ for ss = 1:n_slices
     if isempty(group_data)
         slice_group_data = [];
     else
-        slice_group_data = group_data(slice_mask); % Get group data for this slice
+        slice_group_data = group_data(slice_mask); % Get group data for this slice (used to intialize model fit estimates)
     end
 
+    % Skip slice if less than 20 data points or all data points are 0
     if length(slice_Ts) < 20
         disp(['Fewer than 20 data points in slice ' num2str(ss) '/' num2str(n_slices) '... skipping slice']);
         continue
@@ -55,6 +58,7 @@ for ss = 1:n_slices
         continue
     end
 
+    % Fit deisred model to slice
     if strcmp(type, 'step')
         model = fittype('x2*(x<x1) + x3*(x>=x1)',... % step function model
             'dependent', 'z',...
@@ -115,10 +119,11 @@ for ss = 1:n_slices
         error('model type not recognized')
     end
 
+    % Store slice fit data/info
     fit_results{ss} = fit_res_curr;
     gofs{ss} = gof_curr;
     model_info{ss}= info_curr;
     key_metrics(ss,:) = [gof_curr.rsquare, gof_curr.rmse, gof_curr.sse, info_curr.numobs, parameters, min(slice_xs), max(slice_xs)];
 end
-key_metrics = array2table(key_metrics, 'VariableNames',{'rsquare', 'rmse', 'sse', 'numobs', 'p1', 'p2', 'p3', 'p4', 'xmin', 'xmax'});
+key_metrics = array2table(key_metrics, 'VariableNames',{'rsquare', 'rmse', 'sse', 'numobs', 'p1', 'p2', 'p3', 'p4', 'xmin', 'xmax'}); % make output model fit data into a table
 end

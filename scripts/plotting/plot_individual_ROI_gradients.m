@@ -18,20 +18,20 @@ N_hemis = length(hemis);
 contrasts = {'sensory', 'WM'};
 N_contrasts = 2;
 
-move_mean_window = 2.2; % mm
+move_mean_window = 2.2; % bin size for averaging (mm)
 
 save_out_image = true;
 
 %% Loop over subjs/hemis and calculate moving mean across ROI
 bin_centers = nan(N_subjs, N_hemis, 50);
 move_means = nan(N_subjs, N_contrasts, N_hemis, 50);
-slopes = nan(N_subjs, N_contrasts, N_hemis);
+slopes = nan(N_subjs, N_contrasts, N_hemis); % also interested in looking at slopes of each
 
 for hh = 1:N_hemis
     hemi = hemis{hh};
     for ss = 1:N_subjs
         subj = subjCodes{ss};
-        boundary = boundary_x(ss,hh);
+        boundary = boundary_x(ss,hh); % x-axis coordinate (used to align all subjs)
         xs = xs_store{ss,hh};
         xs = xs-boundary; % align to boundary point of boundary model on x-axis
         if isempty(xs) 
@@ -44,6 +44,7 @@ for hh = 1:N_hemis
             coefs = [xs, ones(length(xs),1)] \ Ts'; % linear regression on only x coordinates
             slopes(ss,cc,hh) = coefs(1); % 1st param is slope
             move_mean = nan(length(bin_edges)-1,1);
+            % Actually calculate the mean difference T-stat for each bin
             for bb = 1:length(bin_edges)-1
                 move_mean(bb) = mean(Ts( (xs>=bin_edges(bb)) & (xs<bin_edges(bb+1)) ));
             end
@@ -60,13 +61,13 @@ means = squeeze(mean(move_means,1,'omitnan'));
 for hh = 1:N_hemis
     for cc = 1:N_contrasts
         notnan = sum(~isnan(squeeze(move_means(:,cc,hh,:))), 1);
-        means(cc,hh,notnan<5) = nan;
+        means(cc,hh,notnan<5) = nan; % if there are less than 5 subjs with data at a point, make that point nan
     end
 end
 
 slope_means = squeeze(mean(slopes,1,'omitnan'));
 
-%% Plot
+%% Plot T-stats for WM and Sensory (SMC) over x-axis for all subjs (and mean of subjs) for each hemisphere
 
 mean_xs = squeeze(mean(bin_centers, 1, 'omitnan'))';
 

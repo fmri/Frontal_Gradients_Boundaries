@@ -1,7 +1,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% The purpose of this script is to make task contrasts out of the
 %%% freesurfer preprocessed localizer data surfaces - in order to draw ROIs
-%%% from the contrast maps
+%%% from the contrast maps. Other task contrasts have already been made in
+%%% a different project using the same dataset, but making a few extra here
+%%% to look at some extra stuff. But the format for creating the contrasts
+%%% is the same here as it was there. 
+%%% 
 %%% Tom Possidente - July 2024
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -130,73 +134,73 @@ end
 
 
 
-%%
-%%%%%%%%%% Run for subjs RR MM PP (no fixation condition) %%%%%%%%%%
-%%
-
-analysis_name_lh_nofix = 'localizer_contrasts_0sm_nofix_lh';
-analysis_name_rh_nofix = 'localizer_contrasts_0sm_nofix_rh';
-rlf_name = 'localizer_contrasts_runlistfile.txt';
-subjCodes = {'MM', 'PP'};
-
-run_mkanalysis = true;
-run_mkcontrast = true;
-
-if run_mkanalysis
-    unix(['mkanalysis-sess -a ' analysis_name_lh_nofix ' -funcstem ' funcstem_lh ...
-        ' -surface fsaverage lh -fsd localizer -event-related -paradigm ' para_name ...
-        ' -nconditions 6 -refeventdur 32 -TR ' num2str(TR) ...
-        ' -polyfit 1 -spmhrf 0 -mcextreg -runlistfile ' rlf_name ' -per-run -force'])
-
-    unix(['mkanalysis-sess -a ' analysis_name_rh_nofix ' -funcstem ' funcstem_rh ...
-        ' -surface fsaverage rh -fsd localizer -event-related -paradigm ' para_name ...
-        ' -nconditions 6 -refeventdur 32 -TR ' num2str(TR) ...
-        ' -polyfit 1 -spmhrf 0 -mcextreg -runlistfile ' rlf_name ' -per-run -force'])
-end
-
-
-if run_mkcontrast
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh_nofix ' -contrast ' ...
-            'vA-aA -a 1 -c 3'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh_nofix ' -contrast ' ...
-            'vA-aA -a 1 -c 3'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh_nofix ' -contrast ' ...
-            'vP-aP -a 2 -c 4'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh_nofix ' -contrast ' ...
-            'vP-aP -a 2 -c 4'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh_nofix ' -contrast ' ...
-            'vA-vP -a 1 -c 2'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh_nofix ' -contrast ' ...
-            'vA-vP -a 1 -c 2'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh_nofix ' -contrast ' ...
-            'aA-aP -a 3 -c 4'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh_nofix ' -contrast ' ...
-            'aA-aP -a 3 -c 4'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh_nofix ' -contrast ' ...
-            'V-A -a 1 -a 2 -c 3 -c 4'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh_nofix ' -contrast ' ...
-            'V-A -a 1 -a 2 -c 3 -c 4'])
-
-        unix(['mkcontrast-sess -analysis ' analysis_name_lh_nofix ' -contrast ' ...
-            'vAaA-vPaP -a 1 -a 3 -c 2 -c 4'])
-        unix(['mkcontrast-sess -analysis ' analysis_name_rh_nofix ' -contrast ' ...
-            'vAaA-vPaP -a 1 -a 3 -c 2 -c 4'])
-
-end
-
-parfor ss = 1:length(subjCodes)
-
-    subjCode = subjCodes{ss};
-
-    % run glm
-    unix(['selxavg3-sess -s ' subjCode ' -d ' data_dir ' -analysis ' analysis_name_lh_nofix ...
-        ' -no-preproc -overwrite'])
-    unix(['selxavg3-sess -s ' subjCode ' -d ' data_dir ' -analysis ' analysis_name_rh_nofix ...
-        ' -no-preproc -overwrite'])
-
-end
+% %%
+% %%%%%%%%%% Run for subjs RR MM PP (no fixation condition) %%%%%%%%%%
+% %%
+% 
+% analysis_name_lh_nofix = 'localizer_contrasts_0sm_nofix_lh';
+% analysis_name_rh_nofix = 'localizer_contrasts_0sm_nofix_rh';
+% rlf_name = 'localizer_contrasts_runlistfile.txt';
+% subjCodes = {'MM', 'PP'};
+% 
+% run_mkanalysis = true;
+% run_mkcontrast = true;
+% 
+% if run_mkanalysis
+%     unix(['mkanalysis-sess -a ' analysis_name_lh_nofix ' -funcstem ' funcstem_lh ...
+%         ' -surface fsaverage lh -fsd localizer -event-related -paradigm ' para_name ...
+%         ' -nconditions 6 -refeventdur 32 -TR ' num2str(TR) ...
+%         ' -polyfit 1 -spmhrf 0 -mcextreg -runlistfile ' rlf_name ' -per-run -force'])
+% 
+%     unix(['mkanalysis-sess -a ' analysis_name_rh_nofix ' -funcstem ' funcstem_rh ...
+%         ' -surface fsaverage rh -fsd localizer -event-related -paradigm ' para_name ...
+%         ' -nconditions 6 -refeventdur 32 -TR ' num2str(TR) ...
+%         ' -polyfit 1 -spmhrf 0 -mcextreg -runlistfile ' rlf_name ' -per-run -force'])
+% end
+% 
+% 
+% if run_mkcontrast
+% 
+%         unix(['mkcontrast-sess -analysis ' analysis_name_lh_nofix ' -contrast ' ...
+%             'vA-aA -a 1 -c 3'])
+%         unix(['mkcontrast-sess -analysis ' analysis_name_rh_nofix ' -contrast ' ...
+%             'vA-aA -a 1 -c 3'])
+% 
+%         unix(['mkcontrast-sess -analysis ' analysis_name_lh_nofix ' -contrast ' ...
+%             'vP-aP -a 2 -c 4'])
+%         unix(['mkcontrast-sess -analysis ' analysis_name_rh_nofix ' -contrast ' ...
+%             'vP-aP -a 2 -c 4'])
+% 
+%         unix(['mkcontrast-sess -analysis ' analysis_name_lh_nofix ' -contrast ' ...
+%             'vA-vP -a 1 -c 2'])
+%         unix(['mkcontrast-sess -analysis ' analysis_name_rh_nofix ' -contrast ' ...
+%             'vA-vP -a 1 -c 2'])
+% 
+%         unix(['mkcontrast-sess -analysis ' analysis_name_lh_nofix ' -contrast ' ...
+%             'aA-aP -a 3 -c 4'])
+%         unix(['mkcontrast-sess -analysis ' analysis_name_rh_nofix ' -contrast ' ...
+%             'aA-aP -a 3 -c 4'])
+% 
+%         unix(['mkcontrast-sess -analysis ' analysis_name_lh_nofix ' -contrast ' ...
+%             'V-A -a 1 -a 2 -c 3 -c 4'])
+%         unix(['mkcontrast-sess -analysis ' analysis_name_rh_nofix ' -contrast ' ...
+%             'V-A -a 1 -a 2 -c 3 -c 4'])
+% 
+%         unix(['mkcontrast-sess -analysis ' analysis_name_lh_nofix ' -contrast ' ...
+%             'vAaA-vPaP -a 1 -a 3 -c 2 -c 4'])
+%         unix(['mkcontrast-sess -analysis ' analysis_name_rh_nofix ' -contrast ' ...
+%             'vAaA-vPaP -a 1 -a 3 -c 2 -c 4'])
+% 
+% end
+% 
+% parfor ss = 1:length(subjCodes)
+% 
+%     subjCode = subjCodes{ss};
+% 
+%     % run glm
+%     unix(['selxavg3-sess -s ' subjCode ' -d ' data_dir ' -analysis ' analysis_name_lh_nofix ...
+%         ' -no-preproc -overwrite'])
+%     unix(['selxavg3-sess -s ' subjCode ' -d ' data_dir ' -analysis ' analysis_name_rh_nofix ...
+%         ' -no-preproc -overwrite'])
+% 
+% end

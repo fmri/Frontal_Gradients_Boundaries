@@ -1,7 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% The purpose of this script is to create probabilistic maps from
 %%% randomly permuted groups of WM and SMC contrasts in order to create a null
-%%% distribution for eventual hypothesis testing with true WM and SMC
+%%% distribution for eventual hypothesis testing with true/unpermuted WM and SMC
 %%% contrast groups
 %%%
 %%% Tom Possidente - January 2026
@@ -15,14 +15,14 @@ tic;
 %% Initialize Key Variables
 
 iterations = 10000; 
-contrasts = {'vA-vP', 'vP-f'}; % supramodal is {'vA-vP', 'aA-aP'; 'f-vP', 'f-aP'}). Supramodal_visual is {'aAaP-f', 'vAvP-f'; 'vAvP-f', ''}
+contrasts = {'vA-vP', 'vP-f'}; % supramodal is {'vA-vP', 'aA-aP'; 'f-vP', 'f-aP'}). P = passive/sensorimotor control, A = active/WM, v = visual, a = auditory, f = fixation
 keyword= 'visual'; % used for naming nii files (auditory, visual, supramodal, visaud, supramodal_visual, supramodal_auditory)
 N_contrasts = 2;
 
 subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI', 'SL'};
 N = length(subjCodes);
 
-N_vertices = 163842;
+N_vertices = 163842; % number of vertices in fsaverage surface
 hemis = {'lh', 'rh'};
 N_hemis = length(hemis);
 pval_thresh = -log10(0.05); % pvals in freesurfer files are expressed as -log10(p)
@@ -80,7 +80,7 @@ for hh = 1:N_hemis
                 if flip(cc)
                     data.vol = -data.vol; % if contrast was backwards, flip it to be correct
                 end
-                stat_data(:,hh,cc,nn) = data.vol>pval_thresh;
+                stat_data(:,hh,cc,nn) = data.vol>pval_thresh; % get p<0.05 vertices 
             end
         end
     end

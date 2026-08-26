@@ -1,7 +1,8 @@
 function [winning_angle, winning_model] = individual_find_axis_noslice(type, xs, ys, Ts, group_data, angles)
-% INDIVIDUAL_FIND_AXIS fits boundary (step function) or gradient (linear, hinge
-% functions) to the given data at the supplied angle rotations to see which
-% is the best angle to use for a given model
+% INDIVIDUAL_FIND_AXIS fits boundary (step function) to the given data at the supplied angle rotations to see which
+% is the best angle to use for a given model. Does so without slicing ROI
+% into sections (i.e. collapses data onto a single 1D axis). Used only with
+% step function fitting right now (giving step function the advantage). 
 
 arguments (Input)
     type {mustBeText, mustBeNonempty} % which model to fit (step, linear, hinge)
@@ -17,7 +18,7 @@ best_rsquare = -100; % initialize
 if strcmp(type, 'step')
     model = fittype('x2*(x<x1) + x3*(x>=x1)',... % step function model
         'dependent', 'z',...
-        'independent', {'x'}, ... % y is not actually used in the function but include it so that we can use all 3D data to fit (not just the x and z coordinates)
+        'independent', {'x'}, ... 
         'coefficients', {'x1','x2', 'x3'}); % x1 is step location, x2 is pre-step, x3 is post-step
 
     for aa = 1:length(angles) % rotate x-axis iteratively and fit each time to find best fit
@@ -39,7 +40,6 @@ if strcmp(type, 'step')
             winning_model = model;
         end
     end
-
 elseif strcmp(type, 'linear')
     error('linear model not yet implemented in this function')
 elseif strcmp(type, 'hinge')

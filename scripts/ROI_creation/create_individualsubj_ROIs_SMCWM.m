@@ -19,15 +19,15 @@ hemis = {'lh', 'rh'};
 subjCodes = {'MK', 'AB', 'AD', 'LA', 'AE', 'TP', 'NM', 'AF', 'AG', 'GG', 'UV', 'PQ', 'KQ', 'LN', 'RT', 'PT', 'PL', 'NS', 'AI', 'SL'};
 N = length(subjCodes);
 
-contrasts = {'vAvP-f', 'aAaP-f'}; % using WM&SMC - Fixation 
+contrasts = {'vAvP-f', 'aAaP-f'}; % using WM&SMC - Fixation . P = passive/sensorimotor control, A = active/WM, v = visual, a = auditory, f = fixation
 N_contrasts = length(contrasts);
 contrast_names = {'visual', 'auditory', 'supramodal'};
 save_out_ROIs = false;
 
-N_vertices = 163842;
+N_vertices = 163842; % number of vertices in fsaverage surface
 vertex_inds = 1:N_vertices;
 
-pval_thresh = -log10(0.01); % pvals in freesurfer files are expressed as -log10(p)
+pval_thresh = -log10(0.01); % pvals in freesurfer files are expressed as -log10(p). Pval thresh is 0.01 uncorrected here
 ROI_vertices_thresh = 0.1; % percent of vertices in search space that must exist in final ROI
 ROI_subj_thresh = 0.5; % precent of subjs that must have the ROI for it to be used
 
@@ -55,7 +55,7 @@ for hh = 1:2
     end
 end
 
-%% Loop through subjs/ROIs/contrasts to create ROIs
+%% Loop through subjs/ROIs/contrasts/hemis to create ROIs
 ROI_size = nan(N, 2, N_ROIs, N_contrasts+1); % subjs x hemis x ROIs x contrast+1
 ROI_good_persubj = nan(N, 2, N_ROIs, N_contrasts+1);
 
@@ -69,7 +69,7 @@ for ss = 1:N
             final_ROImasks = nan(N_vertices, N_contrasts);
             for cc = 1:N_contrasts
                 contrast = contrasts{cc};
-                data = MRIread([data_dir subjCode '/localizer/localizer_contrasts_' hemi '/' contrast '/sig.nii.gz']);
+                data = MRIread([data_dir subjCode '/localizer/localizer_contrasts_' hemi '/' contrast '/sig.nii.gz']); % get individual subj pval map for this hemisphere/contrast
                 data_thresh_mask = data.vol >= pval_thresh;
                 final_ROImask = prob_ROI_mask & data_thresh_mask'; % vertices in probabilistic mask that are also significant in this contrast
                 final_ROImasks(:,cc) = final_ROImask;
@@ -78,7 +78,7 @@ for ss = 1:N
 
                 % Create ROI
                 if ROI_good_persubj(ss,hh,rr,cc)
-                    cortex_label_inds = vertex_inds(final_ROImask) - 1; % indices are off by 1
+                    cortex_label_inds = vertex_inds(final_ROImask) - 1; % indices are off by 1 due to 0 vs 1 indexing
                     cortex_label_mask = ismember(cortex_labels{hh}{:,1}, cortex_label_inds);
                     assert(length(cortex_label_inds)==sum(cortex_label_mask), 'number of vertices in ROI mask does not match number of vertices in label');
                     label = table2array(cortex_labels{hh}(cortex_label_mask,:));
@@ -92,7 +92,7 @@ for ss = 1:N
                 end
             end
 
-            % Create intersection of 2 contrast ROIs
+            % Create intersection of 2 contrast ROIs (for supramodal ROIs)
             final_ROImask_intersection = final_ROImasks(:,1) & final_ROImasks(:,2);
             ROI_size(ss,hh,rr,N_contrasts+1) = sum(final_ROImask_intersection);
             ROI_good_persubj(ss,hh,rr,N_contrasts+1) = sum(final_ROImask_intersection) >= (sum(prob_ROI_mask)*0.1);
