@@ -2,7 +2,8 @@
 
 This repository contains code used in the following preprint:
 
-   [not yet submitted to bioRciv]
+      Possidente, T., Tripathi, V., Lee, S., & Somers, D. C. (2026). Gradients of function between sensory drive and 
+      working memory in human frontal cortex. bioRxiv, 2026-08. https://doi.org/10.64898/2026.08.25.747005
 
 This repository contains code for preprocessing, analysing, and making figures for the frontal gradients boundaries.
 
