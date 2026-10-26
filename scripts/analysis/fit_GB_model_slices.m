@@ -119,6 +119,10 @@ for ss = 1:n_slices
         error('model type not recognized')
     end
 
+    if abs(gof_curr.rsquare) < 0 || abs(gof_curr.rsquare) > 1
+        error('Fitting r-squared out of bounds');
+    end
+
     % Store slice fit data/info
     fit_results{ss} = fit_res_curr;
     gofs{ss} = gof_curr;

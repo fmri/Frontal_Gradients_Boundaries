@@ -28,7 +28,7 @@ subj_ROIs = '/projectnb/somerslab/tom/projects/Frontal_Gradients_Boundaries/data
 contrasts = {'vP-f', 'vA-vP'}; % which functional data contrasts to use (supramodal is 'aPvP-f', 'vAaA-vPaP'). P = passive/sensorimotor control, A = active/WM, v = visual, a = auditory, f = fixation
 N_contrasts = length(contrasts);
 modality = 'visual'; % visual, auditory, supramodal, visaud
-ROI_name = 'preSMA'; % Which ROI to look at: preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, aIPS
+ROI_name = 'inf_lat_frontal'; % Which ROI to look at: preSMA, inf_lat_frontal, aINS, midIFS, sup_lat_frontal, aIPS
 models = {'step', 'linear', 'hinge'};
 axis_method = 'average'; % regression (uses regression to find axis of largest difference) or average (uses weighted average of positive and negative pts to make line)
 axis_choice = 'step'; % step (use step function axis for all models) or individual (use best axis for each model individually)
@@ -81,7 +81,6 @@ end
 Ts_store = cell(N_subjs, N_contrasts, 2); % T stats for each ROI/subj/hemi
 xs_store = cell(N_subjs, num_hemis);
 boundary_x = nan(N_subjs, num_hemis);
-patch_inds_store = nan(N_subjs, num_hemis, 2);
 winning_model = nan(N_subjs, num_hemis); % which model had best BIC (1 is step, 2 is linear, 3 is hinge)
 model_comp = nan(N_subjs, num_hemis); % BIC difference values between winner and next best
 winning_rsquare = nan(N_subjs, num_hemis); % r-square of winning model
@@ -100,7 +99,7 @@ winning_angles = nan(N_subjs, num_hemis); % which angle was optimal
 perc_neg = nan(N_subjs, num_hemis, N_contrasts);
 
 tic;
-for hh = 1:num_hemis
+for hh = 1:num_hemis 
     hemi = hemis{hh};
 
     for ss = 1:N_subjs
@@ -117,15 +116,16 @@ for hh = 1:num_hemis
         patch_inds = ROIs{hh}.ind(patch_inds_mask);
         subjROI_x = ROIs{hh}.x(patch_inds_mask);
         subjROI_y = ROIs{hh}.y(patch_inds_mask);
+        patch_size(ss,hh) = length(patch_inds);
 
         for cc = 1:length(contrasts)
             % Get contrast t-stat data
             contrast = contrasts{cc};
             tstats = MRIread([subjdir subjCode '/localizer/localizer_contrasts_0sm_' hemi '/' contrast '/t.nii.gz']);
             ROI_tstat = tstats.vol(patch_inds+1); % index numbers in labels/patches start at 0, but indexing starts at 1 in matlab, so add one when indexing like this
+            ROI_tstat(ROI_tstat<0) = 0; % Clip negative t-stats at zero so that subtraction of 2 contrasts makes sense
             Ts_store{ss,cc,hh} = ROI_tstat;
             perc_neg(ss,hh,cc) = sum(ROI_tstat<0)/length(ROI_tstat);
-            ROI_tstat(ROI_tstat<0) = 0; % Clip negative t-stats at zero so that subtraction of 2 contrasts makes sense
         end
 
         % Get difference between contrasts in ROI
@@ -154,7 +154,7 @@ for hh = 1:num_hemis
         %% Fit step function to data (boundary model)
         % First find angle that maximizes step model fit for whole ROI (no slices)
         [winning_angle, winning_angle_model]= individual_find_axis_noslice('step', xs, ys, Ts, group_data_curr, angles);
-        winning_angles(ss,hh) = winning_angle; 
+        winning_angles(ss,hh) = winning_angle + group_angle(hh); 
         
         % Fit at winning angle per slice
         [metrics_step, ~, ~, xs_new, ys_new, ~, bins_step] = fit_GB_model_slices('step', xs, ys, Ts, group_data_curr, winning_angle);
@@ -216,6 +216,7 @@ for hh = 1:num_hemis
         linear_means = mean(metrics_linear,'omitnan', 'Weights', metrics_step.numobs);
         hinge_means = mean(metrics_hinge, 'omitnan', 'Weights', metrics_step.numobs);
         hinge_means_all{ss,hh} = hinge_means;
+        patch_length(ss,hh) = hinge_means.xmax-hinge_means.xmin;
 
         %% Calculate log likelihood of each model
         LL_step = loglikelihood(step_means.numobs, step_means.rmse, step_means.sse);
@@ -252,6 +253,7 @@ for hh = 1:num_hemis
     end
 end
 toc
+
 
 % Check the change direction of each winning model
 good_winning_direction = zeros(N_subjs,num_hemis);
